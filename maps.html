@@ -1,0 +1,2235 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAI MAP - Peta Rute KA Multi-Transit</title>
+
+    <!-- Leaflet CSS untuk tampilan peta -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    
+    <!-- Link Font Inter dari Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- DEFINISI VARIABEL WARNA (THEME) --- */
+        :root, body.dark-mode {
+            /* DARK MODE (Default) */
+            --bg-primary: #121212;
+            --bg-sidebar: rgba(20, 20, 20, 0.98);
+            --bg-card: #282828;
+            --bg-hover: #333333;
+            --text-primary: #E0E0E0;
+            --text-secondary: #A0A0A0;
+            --accent-primary: #00F0FF; /* Neon Cyan (KAI/Highlight) */
+            --accent-secondary: #FFD700; /* Gold (KRL/Cost) */
+            --border-color: #333;
+            --alert-error: #FF4500;
+        }
+
+        body.light-mode {
+            /* LIGHT MODE (Berdasarkan Palet dari Anda) */
+            --bg-primary: #F0F0F0;
+            --bg-sidebar: rgba(255, 255, 255, 0.95);
+            --bg-card: #FFFFFF;
+            --bg-hover: #E0E0E0;
+            --text-primary: #333333;
+            --text-secondary: #555555;
+            --accent-primary: #3A89E5; /* Blue (KAI/Highlight) */
+            --accent-secondary: #E03486; /* Pink (KRL/Cost) */
+            --border-color: #CCCCCC;
+            --alert-error: #C0392B;
+        }
+
+        /* --- STYLING UTAMA --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden; 
+        }
+        #map {
+            position: absolute; top: 0; bottom: 0; left: 0; right: 0; width: 100%; height: 100%; z-index: 1; border-radius: 8px; 
+        }
+        .sidebar {
+            position: absolute; top: 20px; right: 20px; width: 300px; padding: 25px; 
+            background-color: var(--bg-sidebar); 
+            border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7); z-index: 1000; border: 1px solid var(--border-color);
+            color: var(--text-primary); display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 40px); overflow-y: auto;
+            transition: transform 0.3s ease-in-out, width 0.3s;
+        }
+        .sidebar.minimized {
+            transform: translateX(calc(100% - 60px)); /* Sembunyikan sebagian besar di desktop */
+            width: 300px;
+        }
+        .sidebar-toggle {
+            position: absolute;
+            top: 0;
+            left: -40px; /* Di luar sidebar */
+            width: 40px;
+            height: 40px;
+            background-color: var(--bg-sidebar);
+            border-radius: 8px 0 0 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: -4px 0 8px rgba(0, 0, 0, 0.5);
+            z-index: 999; 
+            color: var(--accent-primary);
+            font-size: 1.5em;
+            font-weight: bold;
+            border: 1px solid var(--border-color);
+            border-right: none;
+        }
+        .header-title { font-size: 1.8em; font-weight: 800; color: var(--accent-primary); margin-bottom: 5px; text-shadow: 0 0 5px var(--accent-primary, 0.5); }
+        .header-subtitle { font-size: 0.9em; color: var(--text-secondary); margin-bottom: 15px; }
+        .input-group { 
+            position: relative; 
+            margin-bottom: 15px; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .input-group label { font-size: 0.8em; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600; }
+        .input-group input[type="text"], .input-group input[type="date"], .input-group input[type="time"] {
+            width: 95%; padding: 10px; border: none; border-radius: 6px; background-color: var(--bg-card); color: var(--text-primary); font-size: 1em; transition: all 0.3s;
+        }
+        .input-group input:focus { outline: none; box-shadow: 0 0 5px var(--accent-primary); background-color: var(--bg-hover); }
+        .datetime-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .datetime-group > div { flex: 1; }
+        #search-route-btn {
+            background-color: var(--accent-primary); color: var(--bg-primary); padding: 12px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;
+            transition: background-color 0.2s, box-shadow 0.2s; text-transform: uppercase; box-shadow: 0 0 10px var(--accent-primary, 0.5); margin-top: 10px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #search-route-btn:hover:not(:disabled) { background-color: var(--accent-secondary); box-shadow: 0 0 15px var(--accent-primary, 0.9); }
+        #search-route-btn:disabled { background-color: var(--bg-hover); color: var(--text-secondary); cursor: not-allowed; box-shadow: none; }
+        .stats-bar { position: absolute; top: 20px; left: 20px; display: flex; gap: 15px; z-index: 1000; }
+        .stat-box {
+            background-color: var(--bg-sidebar); padding: 12px 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            border-left: 4px solid var(--accent-primary); text-align: left; color: var(--text-primary);
+        }
+        .stat-value { font-size: 1.4em; font-weight: 800; color: var(--accent-secondary); line-height: 1; }
+        .stat-label { font-size: 0.75em; color: var(--text-secondary); margin-top: 2px; }
+        .filter-title { margin-top: 5px; font-weight: 700; color: var(--accent-primary); padding-bottom: 5px; border-bottom: 1px solid var(--border-color); margin-bottom: 15px; }
+        .radio-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .radio-group label {
+            flex: 1; padding: 8px; background-color: var(--bg-card); border-radius: 6px; text-align: center; transition: background-color 0.2s, box-shadow 0.2s; font-size: 0.9em;
+            cursor: pointer;
+        }
+        #prio-all:checked + label {
+            background-color: var(--bg-hover);
+            color: var(--text-primary);
+            box-shadow: 0 0 10px rgba(121, 85, 72, 0.8);
+            font-weight: bold;
+        }
+        .radio-group input[type="radio"] { display: none; }
+        .radio-group input[type="radio"]:checked + label {
+            background-color: var(--accent-primary); color: var(--bg-primary); box-shadow: 0 0 10px var(--accent-primary, 0.8); font-weight: bold;
+        }
+        .route-card {
+            background-color: var(--bg-card); padding: 10px; margin-bottom: 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
+        }
+        .route-card:hover { background-color: var(--bg-hover); border-color: var(--accent-secondary); }
+        .route-card.selected { border-color: var(--accent-primary); box-shadow: 0 0 8px var(--accent-primary, 0.5); background-color: var(--bg-hover); }
+        .route-card-title { font-weight: 700; color: var(--accent-primary); font-size: 1em; }
+        .route-card-detail { font-size: 0.8em; color: var(--text-secondary); margin-top: 3px; }
+        .route-card-price { font-weight: 700; color: var(--accent-secondary); }
+
+        /* --- SARAN_AI FEATURE CSS --- */
+        #saran-ai-result-box {
+            background-color: var(--bg-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        /* --- THEME TOGGLE STYLING --- */
+        .theme-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 5px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.9em;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+        .switch input { display: none; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--bg-hover);
+            transition: .4s;
+            border-radius: 20px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: var(--accent-secondary);
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent-primary); }
+        input:checked + .slider:before { transform: translateX(20px); background-color: white; }
+
+
+        /* MEDIA QUERIES UNTUK RESPONSIVITAS MOBILE (< 768px) */
+        @media (max-width: 768px) {
+            .sidebar { 
+                width: auto; 
+                left: 10px; 
+                right: 10px; 
+                top: auto; 
+                bottom: 10px; /* Pindahkan ke bawah */
+                padding: 15px; 
+                max-height: 80vh;
+                transform: translateY(0); /* Reset transform */
+                transition: transform 0.3s ease-in-out;
+            }
+            /* Minimalkan sidebar di mobile (default) */
+            .sidebar.minimized {
+                /* Hanya tampilkan header (sekitar 100px) */
+                max-height: 100px; 
+                overflow: hidden;
+            }
+            .sidebar-content {
+                opacity: 1; /* Konten terlihat saat tidak minimized */
+                transition: opacity 0.3s ease-in-out;
+                padding-top: 20px; /* Ruang untuk header title */
+            }
+            .sidebar.minimized .sidebar-content {
+                opacity: 0;
+                pointer-events: none; /* Nonaktifkan interaksi saat minimized */
+            }
+            .sidebar-toggle {
+                position: relative; /* Pindahkan toggle ke dalam sidebar */
+                left: auto;
+                right: auto;
+                width: 100%;
+                height: 30px;
+                background-color: var(--bg-hover); /* Warna latar toggle di mobile */
+                color: var(--accent-primary);
+                border-radius: 8px; /* Sudut membulat */
+                box-shadow: none;
+                margin: 0;
+                order: -1; /* Pindahkan ke atas */
+                padding: 5px 0;
+                font-size: 1em;
+                line-height: 1;
+                border-bottom: 1px solid var(--border-color);
+                margin-bottom: 10px;
+            }
+            .stats-bar {
+                position: absolute; top: 10px; bottom: auto; left: 10px; right: 10px; width: auto; /* Pindahkan ke atas */
+                display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;
+                background-color: var(--bg-sidebar); padding: 5px; border-radius: 12px;
+            }
+            .stat-box { padding: 8px 5px; text-align: center; border-left-width: 2px; border-radius: 6px; }
+            .stat-value { font-size: 1.1em; }
+            .stat-label { font-size: 0.6em; }
+            .input-group input[type="text"], .input-group input[type="date"], .input-group input[type="time"] { width: 100%; }
+            .datetime-group { flex-direction: column; gap: 5px; }
+            .radio-group { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. Statistik Dashboard Mini -->
+    <div class="stats-bar">
+        <div class="stat-box">
+            <div class="stat-value" id="stat-time">---</div>
+            <div class="stat-label">WAKTU RUTE TOTAL</div>
+        </div>
+        <div class="stat-box" style="border-left: 4px solid var(--accent-secondary);">
+            <div id="stat-cost" class="stat-value">---</div> 
+            <div class="stat-label">TOTAL BIAYA (IDR)</div>
+        </div>
+        <div class="stat-box">
+            <div id="stat-transfers" class="stat-value" style="color: var(--accent-primary);">0</div>
+            <div class="stat-label">JUMLAH TRANSIT</div>
+        </div>
+    </div>
+
+    <!-- 2. Panel Samping (Sidebar) untuk Kontrol -->
+    <div class="sidebar minimized" id="sidebar">
+        <!-- Tombol Toggle untuk Desktop & Mobile -->
+        <div class="sidebar-toggle" onclick="toggleSidebar()">
+            <span id="toggle-icon">&lt;</span>
+        </div>
+        
+        <div class="sidebar-content">
+            <div class="header-title">KAI MAP</div>
+            <div class="header-subtitle">Peta & Simulasi Rute Kereta Api Multi-Kriteria Jabar/Jabodetabek</div>
+
+            <!-- Lokasi Input - Diperbarui untuk Nama Stasiun -->
+            <div class="input-group" id="start-input-group">
+                <label for="start-location">NAMA/KODE STASIUN AWAL (e.g., Tanah Abang, Gambir)</label>
+                <input type="text" id="start-location" placeholder="Masukkan Nama atau Kode Stasiun" value="CKR" /> 
+                <div id="start-suggestions" class="suggestions-container"></div>
+            </div>
+            <div class="input-group" id="end-input-group">
+                <label for="end-location">NAMA/KODE STASIUN TUJUAN (e.g., Rangkasbitung, Bandung)</label>
+                <input type="text" id="end-location" placeholder="Masukkan Nama atau Kode Stasiun" value="BD" />
+                <div id="end-suggestions" class="suggestions-container"></div>
+            </div>
+
+            <!-- TANGGAL & JAM -->
+            <div class="datetime-group">
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label for="date-select">TANGGAL</label>
+                    <input type="date" id="date-select"/>
+                </div>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label for="time-select">JAM BERANGKAT</label>
+                    <input type="time" id="time-select" value="04:00"/> <!-- Diubah ke 04:00 untuk menangkap jadwal 05:00 -->
+                </div>
+            </div>
+
+            <!-- PILIHAN PRIORITAS (Kriteria A*) -->
+            <div class="filter-title">PILIH PRIORITAS</div>
+            <div class="radio-group">
+                <input type="radio" id="prio-all" name="priority-select" value="all" checked>
+                <label for="prio-all">Multi-Opsi Sepanjang Hari</label>
+
+                <input type="radio" id="prio-cepat" name="priority-select" value="cepat">
+                <label for="prio-cepat">Paling Cepat (Waktu)</label>
+
+                <input type="radio" id="prio-murah" name="priority-select" value="murah">
+                <label for="prio-murah">Paling Murah (Biaya)</label>
+            </div>
+            
+            <!-- MODA AKSES Dihapus sesuai permintaan pengguna -->
+            
+            <button id="search-route-btn">CARI RUTE & LIHAT JALUR</button>
+
+            <!-- Hasil Rute -->
+            <div id="route-options-container">
+                <p style="font-size: 0.9em; color: var(--text-secondary); padding: 5px 0;">Masukkan stasiun dan klik Cari Rute.</p>
+            </div>
+            
+            <!-- Saran AI Feature - Saran Transit -->
+            <div id="saran-ai-suggestion-container" style="display: none;">
+                <div id="saran-ai-result-box"></div>
+            </div>
+            
+            <!-- KRL Info Section BARU -->
+            <div class="filter-title" style="margin-top: 20px; cursor: pointer; display: flex; justify-content: space-between;" onclick="toggleKRLInfo()">
+                <span>INFORMASI RUTE & TARIF KRL</span>
+                <span id="krl-toggle-icon">▼</span>
+            </div>
+            <div id="krl-info-container" style="display: none; padding-top: 5px;">
+                <!-- Konten akan dimuat di sini oleh JS -->
+            </div>
+
+            <!-- Theme Toggle BARU -->
+            <div class="theme-control">
+                <span>Mode Tema (Gelap/Terang)</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 3. Wadah Peta -->
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        
+        // --- KONSTANTA SARAN AI API ---
+        const API_KEY = ""; // Dibiarkan kosong, akan diisi oleh Canvas Environment
+        const MODEL_NAME = 'gemini-2.5-flash-preview-05-20';
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+        // --- END KONSTANTA SARAN AI API ---
+
+        // --- PENTING: VARIABEL GLOBAL DATA ---
+        let STATIONS = {}; 
+        let TRAINS_DATA = {}; 
+        // Inisialisasi sebagai Map Object {dep_code: [rute1, rute2, ...]}
+        let ROUTES_DATA = {}; 
+        let NORMALIZATION_CONSTANTS = {
+            "MAX_PRICE": 250000.0, "MIN_PRICE": 5000.0,
+            "MAX_DURATION_H": 6.0, "MIN_DURATION_H": 0.5,
+            "MAX_PENALTY_SCORE": 1.0
+        };
+
+        // Variabel Peta dan Layer dideklarasikan global, inisialisasi dilakukan di initMap
+        let map = null;
+        let stasiunLayer = null; 
+        let routeLayer = null;
+        let allRouteOptions = [];
+        
+        // --- TEMA COLOR CONSTANTS (Diperbarui saat tema diganti) ---
+        let COLOR_KAI = '#00F0FF'; 
+        let COLOR_COMMUTER = '#FFD700';
+        let COLOR_PRIMARY_TEXT = '#E0E0E0';
+        // --- END TEMA COLOR CONSTANTS ---
+        
+        // Dideklarasikan di sini agar L.latLng tersedia jika Leaflet sudah dimuat
+        const LlatLng = typeof L !== 'undefined' ? L.latLng : null; 
+        const initialCoords = [-6.5, 107.5]; 
+        const initialZoom = 9; 
+        
+        // Array mapping hari (0=Minggu, 1=Senin, dst)
+        const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+        // Data KRL yang Disediakan Pengguna (dalam format HTML/Markdown untuk ditampilkan)
+        const KRL_INFO_CONTENT = `
+            <h2>🚆 KRL Jabodetabek – Rute Lengkap & Tarif</h2>
+            <p>Tarif KRL berlaku sama di semua lintas:</p>
+            <ul>
+                <li>Rp3.000 untuk 25 km pertama</li>
+                <li>Tambah Rp1.000 tiap 10 km berikutnya</li>
+                <li>Maksimal tarif sekali jalan sekitar Rp8.000 – Rp9.000 (rute terjauh, misalnya Rangkasbitung – Cikarang).</li>
+            </ul>
+            <p>Pembayaran pakai Kartu Multi Trip (KMT), e-money, Flazz, TapCash, Brizzi dengan sistem tap in–tap out.</p>
+
+            <h2>1️⃣ Lintas Bogor/Depok – Jakarta Kota (via Manggarai)</h2>
+            <p>Stasiun: Bogor – Cilebut – Bojong Gede – Citayam – Depok – Depok Baru – Pondok Cina – Universitas Indonesia – Universitas Pancasila – Lenteng Agung – Tanjung Barat – Pasar Minggu – Pasar Minggu Baru – Duren Kalibata – Cawang – Tebet – Manggarai – Cikini – Gondangdia – Juanda – Sawah Besar – Mangga Besar – Jayakarta – Jakarta Kota.</p>
+
+            <h2>2️⃣ Lintas Bekasi/Cikarang – Jakarta Kota (via Jatinegara/Manggarai)</h2>
+            <p>Stasiun: Cikarang – Metland Telaga Murni – Cibitung – Tambun – Bekasi – Kranji – Cakung – Klender Baru – Klender – Buaran – Pondok Kopi – Duren Sawit – Jatinegara – Matraman – Manggarai – Pasar Senen – Gang Sentiong – Kemayoran – Rajawali – Jakarta Kota.</p>
+
+            <h2>3️⃣ Lintas Tangerang – Duri</h2>
+            <p>Stasiun: Tangerang – Tanah Tinggi – Batu Ceper – Poris – Kali Deres – Rawa Buaya – Bojong Indah – Taman Kota – Pesing – Grogol – Duri.</p>
+
+            <h2>4️⃣ Lintas Serpong/Parung Panjang/Maja/Rangkasbitung – Tanah Abang</h2>
+            <p>Stasiun: Rangkasbitung – Citeras – Maja – Cikoya – Tigaraksa – Tenjo – Daru – Cicayur – Parung Panjang – Cilejit – Jamserpo – Serpong – Rawabuntu – Sudimara – Jurangmangu – Pondok Ranji – Kebayoran – Palmerah – Tanah Abang.</p>
+
+            <h2>5️⃣ Lintas Tanjung Priok – Jakarta Kota</h2>
+            <p>Stasiun: Tanjung Priok – Ancol – Kampung Bandan – Jakarta Kota.</p>
+
+            <h2>6️⃣ Lintas Lingkar (Loop Line) (sudah ditiadakan)</h2>
+            <p>Dulu menghubungkan Bogor – Manggarai – Tanah Abang – Duri – Jatinegara – balik ke Bogor. Sekarang diganti sistem transit di Manggarai.</p>
+        `;
+
+        /**
+         * Menghitung tarif progresif KRL Jabodetabek berdasarkan jarak (KM).
+         * Rp3.000 untuk 25 km pertama + Rp1.000 per 10 km berikutnya.
+         */
+        function calculateKRLPrice(distanceKm) {
+            const BASE_PRICE = 3000;
+            const BASE_DISTANCE = 25;
+            const INCREMENT_PRICE = 1000;
+            const INCREMENT_DISTANCE = 10;
+            
+            if (distanceKm <= BASE_DISTANCE) {
+                return BASE_PRICE;
+            }
+            
+            const remainingDistance = distanceKm - BASE_DISTANCE;
+            // Hitung kelipatan 10 km, dibulatkan ke atas
+            const increments = Math.ceil(remainingDistance / INCREMENT_DISTANCE);
+            
+            let finalPrice = BASE_PRICE + (increments * INCREMENT_PRICE);
+            
+            // Batasi tarif maksimal sekitar 9000 (sesuai info pengguna)
+            return Math.min(finalPrice, 9000); 
+        }
+
+
+        // =======================================================
+        // KUNCI: LOGIKA PENGAMBILAN DATA DARI GOOGLE SHEETS
+        // =======================================================
+        
+        /**
+         * FIX: Sumber tunggal untuk semua rute Antarkota/Lokal agar tidak bergantung pada CSV.
+         */
+        function getIntercityRoutes() {
+            // Data Antarkota/Lokal dari Sheet dan Rute Kritis digabung di sini
+            return [
+                {"dep": "GMR", "arr": "BD", "train_id": "KA_EKS", "dep_time": "06:00", "arr_time": "09:30", "price": 160000, "is_direct": true, "valid_days": "ALL", "distance_km": 170},
+                {"dep": "GMR", "arr": "BD", "train_id": "KA_EKS", "dep_time": "10:00", "arr_time": "13:30", "price": 150000, "is_direct": true, "valid_days": "FRI,SAT,SUN", "distance_km": 170},
+                {"dep": "PSE", "arr": "BD", "train_id": "KA_EKO", "dep_time": "08:30", "arr_time": "12:45", "price": 115000, "is_direct": true, "valid_days": "ALL", "distance_km": 185},
+                {"dep": "BD", "arr": "PSE", "train_id": "KA_EKO", "dep_time": "14:00", "arr_time": "18:15", "price": 115000, "is_direct": true, "valid_days": "ALL", "distance_km": 185},
+                {"dep": "JNG", "arr": "TSM", "train_id": "KA_EKO", "dep_time": "08:30", "arr_time": "14:15", "price": 110000, "is_direct": true, "valid_days": "ALL", "distance_km": 300},
+                {"dep": "JNG", "arr": "TSM", "train_id": "KA_EKO", "dep_time": "15:00", "arr_time": "20:45", "price": 95000, "is_direct": true, "valid_days": "ALL", "distance_km": 300},
+                // Rute TSM -> JNG (Penting untuk TSM sebagai Stasiun Awal)
+                {"dep": "TSM", "arr": "JNG", "train_id": "KA_EKO", "dep_time": "04:00", "arr_time": "09:45", "price": 100000, "is_direct": true, "valid_days": "ALL", "distance_km": 300},
+                {"dep": "TSM", "arr": "JNG", "train_id": "KA_EKO", "dep_time": "17:00", "arr_time": "22:45", "price": 115000, "is_direct": true, "valid_days": "ALL", "distance_km": 300},
+                {"dep": "CKR", "arr": "CNP", "train_id": "LOK_JAB", "dep_time": "09:30", "arr_time": "13:30", "price": 75000, "is_direct": true, "valid_days": "ALL", "distance_km": 180},
+                {"dep": "CNP", "arr": "CKR", "train_id": "LOK_JAB", "dep_time": "14:30", "arr_time": "18:30", "price": 75000, "is_direct": true, "valid_days": "ALL", "distance_km": 180},
+                {"dep": "PSE", "arr": "CN", "train_id": "KA_EKO", "dep_time": "10:00", "arr_time": "14:00", "price": 85000, "is_direct": true, "valid_days": "ALL", "distance_km": 210},
+                {"dep": "CN", "arr": "PSE", "train_id": "KA_EKO", "dep_time": "16:00", "arr_time": "20:00", "price": 85000, "is_direct": true, "valid_days": "ALL", "distance_km": 210},
+                {"dep": "BOO", "arr": "SI", "train_id": "LOK_JAB", "dep_time": "07:00", "arr_time": "09:30", "price": 40000, "is_direct": true, "valid_days": "ALL", "distance_km": 97},
+                {"dep": "SI", "arr": "BOO", "train_id": "LOK_JAB", "dep_time": "10:00", "arr_time": "12:30", "price": 40000, "is_direct": true, "valid_days": "ALL", "distance_km": 97},
+                {"dep": "BD", "arr": "CN", "train_id": "KA_EKS", "dep_time": "11:00", "arr_time": "15:00", "price": 95000, "is_direct": true, "valid_days": "ALL", "distance_km": 150},
+                // CKR <-> BD (Rute Kritis yang dipaksa masuk)
+                {"dep": "CKR", "arr": "BD", "train_id": "KA_EKO", "dep_time": "17:00", "arr_time": "21:00", "price": 80000, "is_direct": true, "valid_days": "ALL", "distance_km": 165},
+                {"dep": "CKR", "arr": "BD", "train_id": "KA_EKO", "dep_time": "05:00", "arr_time": "09:00", "price": 80000, "is_direct": true, "valid_days": "ALL", "distance_km": 165},
+                {"dep": "BD", "arr": "CKR", "train_id": "KA_EKO", "dep_time": "21:00", "arr_time": "01:00", "price": 80000, "is_direct": true, "valid_days": "ALL", "distance_km": 165},
+                {"dep": "MRI", "arr": "BD", "train_id": "KA_EKS", "dep_time": "19:00", "arr_time": "22:30", "price": 155000, "is_direct": true, "valid_days": "ALL", "distance_km": 175},
+                {"dep": "BD", "arr": "MRI", "train_id": "KA_EKS", "dep_time": "20:00", "arr_time": "23:30", "price": 155000, "is_direct": true, "valid_days": "ALL", "distance_km": 175}
+            ];
+        }
+
+
+        async function fetchSheetData() {
+            // KUNCI: TEMPATKAN URL PUBLISHED CSV ANDA DI SINI!
+            // Catatan: Ganti URL di bawah dengan URL CSV PUBLISHED Google Sheet Anda!
+            const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQtr5PkUi7ITGhQdlmz_bTcmJQYtf1MhC1axWGMTXZX3gpiwVHrBmHhlaV6KeYkx7XpOSDsrlG8EpfW/pub?gid=742692770&single=true&output=csv"; 
+            
+            STATIONS = getStaticStationData();
+            TRAINS_DATA = getStaticTrainConfig();
+
+            let allRoutes = getIntercityRoutes(); // Load semua Intercity/Lokal dari fungsi inject
+
+            try { 
+                const response = await fetch(GOOGLE_SHEET_CSV_URL);
+                const csvText = await response.text();
+                
+                let routesFromCSV = parseCSV(csvText);
+                
+                // Gabungkan data CSV yang berhasil dibaca dengan data inject lokal
+                allRoutes.push(...routesFromCSV);
+
+            } catch (e) {
+                // Biarkan ini kosong; kita sudah punya data yang di-inject.
+                console.warn("Gagal membaca Google Sheet eksternal. Menggunakan data internal yang di-inject.");
+            }
+            
+            // --- PENTING: Pemrosesan Data Antarkota/Lokal dan KRL ---
+            allRoutes = allRoutes.map(route => {
+                const trainType = TRAINS_DATA[route.train_id]?.type;
+
+                // 1. Handle KRL Price: Hitung ulang harga KRL dari jarak
+                if (route.train_id === "KRL_JAB") {
+                    route.price = calculateKRLPrice(route.distance_km);
+                } 
+                
+                // 2. Handle Missing Distance for Antarkota/Lokal (diperlukan untuk Heuristik)
+                if (trainType !== 'Komuter' && (!route.distance_km || route.distance_km <= 0)) {
+                    const stn1 = STATIONS[route.dep];
+                    const stn2 = STATIONS[route.arr];
+                    if (stn1 && stn2) {
+                        route.distance_km = haversine(stn1.lat, stn1.lon, stn2.lat, stn2.lon);
+                        if (route.distance_km > 0) {
+                            console.warn(`DURASI ESTIMASI: ${route.dep}-${route.arr} distance_km dihitung otomatis: ${route.distance_km.toFixed(2)} km.`);
+                        }
+                    }
+                }
+                
+                return route;
+            }).filter(route => route.distance_km > 0); 
+            // --- END PENTING ---
+
+            
+            // --- KRL SIMULATION: Tambahkan Rute KRL berulang (24/7) ---
+            const simulatedKRLSegments = getSimulatedKRLSegments();
+            simulatedKRLSegments.forEach(segment => {
+                addKRLRoutes(allRoutes, segment.dep, segment.arr, segment.distance_km, segment.duration_min, segment.valid_days);
+            });
+            // --- END KRL SIMULATION ---
+            
+
+            // Konversi Array of Routes menjadi Map (struktur akhir ROUTES_DATA)
+            ROUTES_DATA = buildRouteMap(allRoutes);
+            
+            return true;
+        }
+        
+        // Mengubah array rute menjadi map { dep_code: [rute1, rute2, ...] }
+        function buildRouteMap(routesArray) {
+            const map = {};
+            for (const route of routesArray) {
+                if (!map[route.dep]) {
+                    map[route.dep] = [];
+                }
+                map[route.dep].push(route);
+            }
+            return map;
+        }
+
+        // --- CSV Parser Minimalis ---
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            if (lines.length <= 1) return [];
+
+            const headers = lines[0].trim().replace(/\r/g, '').split(',');
+            const result = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const currentLine = lines[i].trim();
+                if (!currentLine) continue;
+
+                // FIX: Menggunakan pemisahan sederhana untuk menangani CSV yang mungkin tidak sempurna
+                const values = currentLine.replace(/\r/g, '').split(',');
+                const obj = {};
+
+                if (values.length === headers.length) {
+                    for (let j = 0; j < headers.length; j++) {
+                        let header = headers[j].trim();
+                        let value = values[j].trim().replace(/"/g, ''); 
+                        
+                        // Konversi tipe data yang dibutuhkan
+                        if (header === 'price') {
+                            obj['price'] = parseFloat(value) || 0;
+                        } else if (header === 'distance_km') {
+                            obj['distance_km'] = parseFloat(value) || 0;
+                        } else if (header === 'is_direct') {
+                            obj['is_direct'] = value.toUpperCase() === 'TRUE';
+                        } else {
+                            obj[header] = value;
+                        }
+                    }
+                    // Tambahkan valid_days jika tidak ada (diasumsikan harian)
+                    if (!obj.valid_days) {
+                        obj.valid_days = "ALL";
+                    }
+
+                    // Map kodkod dari sheets ke format internal & Lakukan Pengecekan Integritas
+                    // FIX: Memastikan train_id ada dan konversi ke uppercase.
+                    if (obj.dep && obj.arr && obj.train_id) {
+                        obj.dep = obj.dep.toUpperCase();
+                        obj.arr = obj.arr.toUpperCase();
+                        obj.train_id = obj.train_id.toUpperCase(); // Penting untuk konsistensi
+                        result.push(obj);
+                    } else if (currentLine.length > 0) {
+                        // Log warning jika baris data tidak valid (hanya jika baris tidak kosong)
+                        console.warn(`Integrity Warning: Skipping invalid route from CSV (Missing dep, arr, or train_id): ${currentLine}`);
+                    }
+                }
+            }
+            return result;
+        }
+
+
+        // --- DATA STATIS (STATIONS & TRAINS CONFIG) ---
+
+        function getStaticTrainConfig() {
+            // Train type determines capability requirement: Komuter or Intercity
+            return {
+                "KA_EKS": {"type": "Antarkota", "class": "Eksekutif", "comfort_score": 0.1},
+                "KA_EKO": {"type": "Antarkota", "class": "Ekonomi", "comfort_score": 0.4},
+                "KRL_JAB": {"type": "Komuter", "class": "KRL", "comfort_score": 0.7}, 
+                "LOK_JAB": {"type": "Lokal", "class": "Lokal", "comfort_score": 0.5},
+                "T001": {"type": "Antarkota", "class": "Eksekutif", "comfort_score": 0.1}, 
+            };
+        }
+
+        function getStaticStationData() {
+            // capabilities: KOMUTER (KRL), INTERCITY (Antarkota/Lokal)
+            // is_hub: true -> untuk KRL-KRL inter-line transfer
+            return {
+                "PSE": {"nama": "PASAR SENEN", "provinsi": "DKI JAKARTA", "lat": -6.1745, "lon": 106.8442, "capabilities": ["INTERCITY"], "is_hub": false},
+                "RJW": {"nama": "RAJAWALI", "provinsi": "DKI JAKARTA", "lat": -6.14508, "lon": 106.8368, "capabilities": ["KOMUTER"], "is_hub": false},
+                "THB": {"nama": "TANAH ABANG", "provinsi": "DKI JAKARTA", "lat": -6.1861, "lon": 106.8108, "capabilities": ["KOMUTER", "INTERCITY"], "is_hub": true},
+                "GDD": {"nama": "Gondangdia", "provinsi": "DKI JAKARTA", "lat": -6.1861, "lon": 106.8328, "capabilities": ["KOMUTER"], "is_hub": false},
+                "JUA": {"nama": "Juanda", "provinsi": "DKI JAKARTA", "lat": -6.16656, "lon": 106.8304, "capabilities": ["KOMUTER"], "is_hub": false},
+                "KAT": {"nama": "Karet", "provinsi": "DKI JAKARTA", "lat": -6.20081, "lon": 106.816, "capabilities": ["KOMUTER"], "is_hub": false},
+                "MGB": {"nama": "Mangga Besar", "provinsi": "DKI JAKARTA", "lat": -6.14978, "lon": 106.827, "capabilities": ["KOMUTER"], "is_hub": false},
+                "SWB": {"nama": "Sawah Besar", "provinsi": "DKI JAKARTA", "lat": -6.16058, "lon": 106.8276, "capabilities": ["KOMUTER"], "is_hub": false},
+                "GST": {"nama": "Sentiong", "provinsi": "DKI JAKARTA", "lat": -6.18628, "lon": 106.851, "capabilities": ["KOMUTER"], "is_hub": false},
+                "SUD": {"nama": "Sudirman", "provinsi": "DKI JAKARTA", "lat": -6.20209, "lon": 106.8234, "capabilities": ["KOMUTER"], "is_hub": false},
+                "AC": {"nama": "ANCOL", "provinsi": "DKI JAKARTA", "lat": -6.12811, "lon": 106.8448, "capabilities": ["KOMUTER"], "is_hub": false},
+                "JAKG": {"nama": "JAKARTA GUDANG", "provinsi": "DKI JAKARTA", "lat": -6.1333, "lon": 106.8194, "capabilities": ["INTERCITY"], "is_hub": false},
+                "TPK": {"nama": "TANJUNG PRIOK", "provinsi": "DKI JAKARTA", "lat": -6.11041, "lon": 106.882, "capabilities": ["KOMUTER"], "is_hub": false},
+                "KPB A": {"nama": "Kampung Bandan Atas", "provinsi": "DKI JAKARTA", "lat": -6.133, "lon": 106.8284, "capabilities": ["KOMUTER"], "is_hub": false},
+                "KPB B": {"nama": "Kampung Bandan Bawah", "provinsi": "DKI JAKARTA", "lat": -6.13239, "lon": 106.8286, "capabilities": ["KOMUTER"], "is_hub": false},
+                "AK": {"nama": "ANGKE", "provinsi": "DKI JAKARTA", "lat": -6.14471, "lon": 106.8008, "capabilities": ["KOMUTER", "INTERCITY"], "is_hub": false}, // Lokal line passes here
+                "DU": {"nama": "DURI", "provinsi": "DKI JAKARTA", "lat": -6.15588, "lon": 106.8016, "capabilities": ["KOMUTER", "INTERCITY"], "is_hub": true},
+                "JAKK": {"nama": "JAKARTA KOTA", "provinsi": "DKI JAKARTA", "lat": -6.1366, "lon": 106.8166, "capabilities": ["KOMUTER", "INTERCITY"], "is_hub": true},
+                "BOI": {"nama": "Bojong Indah", "provinsi": "DKI JAKARTA", "lat": -6.15997, "lon": 106.7366, "capabilities": ["KOMUTER"], "is_hub": false},
+                "GRG": {"nama": "Grogol", "provinsi": "DKI JAKARTA", "lat": -6.16211, "lon": 106.7894, "capabilities": ["KOMUTER"], "is_hub": false},
+                "KDS": {"nama": "Kalideres", "provinsi": "DKI JAKARTA", "lat": -6.16608, "lon": 106.7034, "capabilities": ["KOMUTER"], "is_hub": false},
+                "PSG": {"nama": "Pesing", "provinsi": "DKI JAKARTA", "lat": -6.16119, "lon": 106.772, "capabilities": ["KOMUTER"], "is_hub": false},
+                "KBY": {"nama": "KEBAYORAN", "provinsi": "DKI JAKARTA", "lat": -6.23737, "lon": 106.7824, "capabilities": ["KOMUTER"], "is_hub": false},
+                "MRI": {"nama": "MANGGARAI", "provinsi": "DKI JAKARTA", "lat": -6.2099, "lon": 106.8498, "capabilities": ["KOMUTER", "INTERCITY"], "is_hub": true},
+                "JNG": {"nama": "JATINEGARA", "provinsi": "DKI JAKARTA", "lat": -6.21527, "lon": 106.8704, "capabilities": ["KOMUTER", "INTERCITY"], "is_hub": true},
+                "GMR": {"nama": "GAMBIR", "provinsi": "DKI JAKARTA", "lat": -6.1767, "lon": 106.8308, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CWG": {"nama": "Cawang", "provinsi": "DKI JAKARTA", "lat": -6.2417, "lon": 106.8586, "capabilities": ["KOMUTER"], "is_hub": false},
+                "DRN": {"nama": "Duren Kalibata", "provinsi": "DKI JAKARTA", "lat": -6.25568, "lon": 106.855, "capabilities": ["KOMUTER"], "is_hub": false},
+                "LTA": {"nama": "Lenteng Agung", "provinsi": "DKI JAKARTA", "lat": -6.3299, "lon": 106.8346, "capabilities": ["KOMUTER"], "is_hub": false},
+                "PSM": {"nama": "Pasar Minggu", "provinsi": "DKI JAKARTA", "lat": -6.28436, "lon": 106.8446, "capabilities": ["KOMUTER"], "is_hub": false},
+                "PSMB": {"nama": "Pasar Minggu Baru", "provinsi": "DKI JAKARTA", "lat": -6.26282, "lon": 106.8518, "capabilities": ["KOMUTER"], "is_hub": false},
+                "TNT": {"nama": "Tanjung Barat", "provinsi": "DKI JAKARTA", "lat": -6.30847, "lon": 106.839, "capabilities": ["KOMUTER"], "is_hub": false},
+                "TEB": {"nama": "Tebet", "provinsi": "DKI JAKARTA", "lat": -6.22668, "lon": 106.8584, "capabilities": ["KOMUTER"], "is_hub": false},
+                "UP": {"nama": "Universitas Pancasila", "provinsi": "DKI JAKARTA", "lat": -6.33911, "lon": 106.8342, "capabilities": ["KOMUTER"], "is_hub": false},
+                "BUA": {"nama": "BUARAN", "provinsi": "DKI JAKARTA", "lat": -6.21619, "lon": 106.9276, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CUK": {"nama": "CAKUNG", "provinsi": "DKI JAKARTA", "lat": -6.21918, "lon": 106.9522, "capabilities": ["KOMUTER"], "is_hub": false},
+                "KLD": {"nama": "KLENDER", "provinsi": "DKI JAKARTA", "lat": -6.21338, "lon": 106.9, "capabilities": ["KOMUTER"], "is_hub": false},
+                "KLDB": {"nama": "KLENDER BARU", "provinsi": "DKI JAKARTA", "lat": -6.21759, "lon": 106.9398, "capabilities": ["KOMUTER"], "is_hub": false},
+                "POK": {"nama": "PONDOK JATI", "provinsi": "DKI JAKARTA", "lat": -6.20898, "lon": 106.8622, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CKI": {"nama": "CIKINI", "provinsi": "DKI JAKARTA", "lat": -6.19849, "lon": 106.8412, "capabilities": ["KOMUTER"], "is_hub": false},
+                "KMO": {"nama": "KEMAYORAN", "provinsi": "DKI JAKARTA", "lat": -6.16187, "lon": 106.8414, "capabilities": ["KOMUTER"], "is_hub": false},
+                "KMT": {"nama": "KRAMAT", "provinsi": "DKI JAKARTA", "lat": -6.19391, "lon": 106.8566, "capabilities": ["KOMUTER"], "is_hub": false},
+                "PLM": {"nama": "PALMERAH", "provinsi": "DKI JAKARTA", "lat": -6.20758, "lon": 106.7974, "capabilities": ["KOMUTER"], "is_hub": false},
+                
+                // Jabar / Banten (Tambahan Stasiun Yang Hilang)
+                "CIB": {"nama": "CIBINONG", "provinsi": "JAWA BARAT", "lat": -6.46381, "lon": 106.8548, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CGB": {"nama": "CIGOMBONG", "provinsi": "JAWA BARAT", "lat": -6.74219, "lon": 106.803, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CJT": {"nama": "CILEJIT", "provinsi": "JAWA BARAT", "lat": -6.35431, "lon": 106.5096, "capabilities": ["KOMUTER"], "is_hub": false},
+                "MSG": {"nama": "MASENG", "provinsi": "JAWA BARAT", "lat": -6.70239, "lon": 106.8146, "capabilities": ["KOMUTER"], "is_hub": false},
+                "PRP": {"nama": "PARUNG PANJANG", "provinsi": "JAWA BARAT", "lat": -6.34418, "lon": 106.5688, "capabilities": ["KOMUTER"], "is_hub": false},
+                "TEJ": {"nama": "TENJO", "provinsi": "JAWA BARAT", "lat": -6.32758, "lon": 106.462, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CLT": {"nama": "Cilebut", "provinsi": "JAWA BARAT", "lat": -6.53052, "lon": 106.8006, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CTA": {"nama": "Citayam", "provinsi": "JAWA BARAT", "lat": -6.44897, "lon": 106.8024, "capabilities": ["KOMUTER"], "is_hub": false},
+                "DP": {"nama": "Depok", "provinsi": "JAWA BARAT", "lat": -6.40466, "lon": 106.8172, "capabilities": ["KOMUTER"], "is_hub": false},
+                "POC": {"nama": "Pondok Cina", "provinsi": "JAWA BARAT", "lat": -6.3689, "lon": 106.8324, "capabilities": ["KOMUTER"], "is_hub": false},
+                
+                "BJD": {"nama": "Bojong Gede", "provinsi": "JAWA BARAT", "lat": -6.49268, "lon": 106.7948, "capabilities": ["KOMUTER"], "is_hub": false},
+                "BTT": {"nama": "BATU TULIS", "provinsi": "JAWA BARAT", "lat": -6.62579, "lon": 106.8096, "capabilities": ["INTERCITY"], "is_hub": false},
+                "BOP": {"nama": "BOGOR PALEDANG", "provinsi": "JAWA BARAT", "lat": -6.59789, "lon": 106.79054, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CS": {"nama": "Ciomas", "provinsi": "JAWA BARAT", "lat": -6.65179, "lon": 106.8094, "capabilities": ["INTERCITY"], "is_hub": false},
+                "SI": {"nama": "SUKABUMI", "provinsi": "JAWA BARAT", "lat": -6.92389, "lon": 106.9248, "capabilities": ["INTERCITY"], "is_hub": false},
+                
+                "KRI": {"nama": "Kranji", "provinsi": "JAWA BARAT", "lat": -6.2243, "lon": 106.9792, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CBT": {"nama": "Cibitung", "provinsi": "JAWA BARAT", "lat": -6.26178, "lon": 107.0836, "capabilities": ["KOMUTER"], "is_hub": false},
+                "MTM": {"nama": "Metland Telaga Murni", "provinsi": "JAWA BARAT", "lat": -6.25763, "lon": 107.1108, "capabilities": ["KOMUTER"], "is_hub": false},
+                "KDH": {"nama": "KEDUNG GEDEH", "provinsi": "JAWA BARAT", "lat": -6.2699, "lon": 107.2612, "capabilities": ["KOMUTER"], "is_hub": false},
+                "LMB": {"nama": "LEMAH ABANG", "provinsi": "JAWA BARAT", "lat": -6.27057, "lon": 107.1798, "capabilities": ["KOMUTER"], "is_hub": false},
+                
+                "CKP": {"nama": "CIKAMPEK", "provinsi": "JAWA BARAT", "lat": -6.40607, "lon": 107.459, "capabilities": ["INTERCITY"], "is_hub": false},
+                "KW": {"nama": "KARAWANG", "provinsi": "JAWA BARAT", "lat": -6.30518, "lon": 107.3002, "capabilities": ["INTERCITY"], "is_hub": false},
+                
+                "TNG": {"nama": "TANGERANG", "provinsi": "BANTEN", "lat": -6.17688, "lon": 106.6326, "capabilities": ["KOMUTER"], "is_hub": false},
+                "BPR": {"nama": "Batuceper", "provinsi": "BANTEN", "lat": -6.17218, "lon": 106.665, "capabilities": ["KOMUTER"], "is_hub": false},
+                "PI": {"nama": "Poris", "provinsi": "BANTEN", "lat": -6.16968, "lon": 106.6814, "capabilities": ["KOMUTER"], "is_hub": false},
+                "SRP": {"nama": "SERPONG", "provinsi": "BANTEN", "lat": -6.32019, "lon": 106.6656, "capabilities": ["KOMUTER"], "is_hub": false},
+                "SDM": {"nama": "SUDIMARA", "provinsi": "BANTEN", "lat": -6.29669, "lon": 106.7128, "capabilities": ["KOMUTER"], "is_hub": false},
+                "JMU": {"nama": "Jurang Mangu", "provinsi": "BANTEN", "lat": -6.28851, "lon": 106.7292, "capabilities": ["KOMUTER"], "is_hub": false},
+                "RU": {"nama": "Rawa Buntu", "provinsi": "BANTEN", "lat": -6.31488, "lon": 106.6762, "capabilities": ["KOMUTER"], "is_hub": false},
+                
+                // Stasiun Penting dengan Kapabilitas Mix/Hub
+                "BOO": {"nama": "BOGOR", "provinsi": "JAWA BARAT", "lat": -6.59381, "lon": 106.7906, "capabilities": ["KOMUTER", "INTERCITY"], "is_hub": true}, 
+                "BKS": {"nama": "BEKASI", "provinsi": "JAWA BARAT", "lat": -6.23669, "lon": 106.9994, "capabilities": ["KOMUTER", "INTERCITY"], "is_hub": true},
+                "DPB": {"nama": "Depok Baru", "provinsi": "JAWA BARAT", "lat": -6.3913, "lon": 106.8216, "capabilities": ["KOMUTER"], "is_hub": false},
+                "RK": {"nama": "RANGKASBITUNG", "provinsi": "BANTEN", "lat": -6.3526, "lon": 106.2514, "capabilities": ["KOMUTER", "INTERCITY"], "is_hub": true},
+                "CKR": {"nama": "CIKARANG", "provinsi": "JAWA BARAT", "lat": -6.2737, "lon": 107.1595, "capabilities": ["KOMUTER", "INTERCITY"], "is_hub": true},
+                "BD": {"nama": "BANDUNG", "provinsi": "JAWA BARAT", "lat": -6.91388, "lon": 107.6026, "capabilities": ["INTERCITY"], "is_hub": false}, 
+                "CN": {"nama": "CIREBON", "provinsi": "JAWA BARAT", "lat": -6.70551, "lon": 108.5554, "capabilities": ["INTERCITY"], "is_hub": false}, 
+                "PDJ": {"nama": "PONDOK RANJI", "provinsi": "BANTEN", "lat": -6.27667, "lon": 106.7448, "capabilities": ["KOMUTER"], "is_hub": false},
+            
+                // Sisa stasiun dengan INTERCITY
+                "CBD": {"nama": "CIBADAK", "provinsi": "JAWA BARAT", "lat": -6.88818, "lon": 106.7804, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CCR": {"nama": "CICURUG", "provinsi": "JAWA BARAT", "lat": -6.79041, "lon": 106.7796, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CSA": {"nama": "CISAAT", "provinsi": "JAWA BARAT", "lat": -6.91388, "lon": 106.8876, "capabilities": ["INTERCITY"], "is_hub": false},
+                "KE": {"nama": "KARANG TENGAH", "provinsi": "JAWA BARAT", "lat": -6.8963, "lon": 106.8224, "capabilities": ["INTERCITY"], "is_hub": false},
+                "PRK": {"nama": "PARUNG KUDA", "provinsi": "JAWA BARAT", "lat": -6.8465, "lon": 106.7606, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CJ": {"nama": "CIANJUR", "provinsi": "JAWA BARAT", "lat": -6.82477, "lon": 107.1428, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CBB": {"nama": "CIBEBER", "provinsi": "JAWA BARAT", "lat": -6.9375, "lon": 107.1212, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CPY": {"nama": "CIPEUYEUM", "provinsi": "JAWA BARAT", "lat": -6.81848, "lon": 107.2982, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CRJ": {"nama": "CIRANJANG", "provinsi": "JAWA BARAT", "lat": -6.81409, "lon": 107.2512, "capabilities": ["INTERCITY"], "is_hub": false},
+                "LP": {"nama": "LAMPEGAN", "provinsi": "JAWA BARAT", "lat": -6.94989, "lon": 107.0616, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CCL": {"nama": "CICALENGKA", "provinsi": "JAWA BARAT", "lat": -6.98157, "lon": 107.8328, "capabilities": ["INTERCITY"], "is_hub": false},
+                "HRP": {"nama": "HAURPUGUR", "provinsi": "JAWA BARAT", "lat": -6.98071, "lon": 107.7996, "capabilities": ["INTERCITY"], "is_hub": false},
+                "NG": {"nama": "NAGREG", "provinsi": "JAWA BARAT", "lat": -7.01819, "lon": 107.8862, "capabilities": ["INTERCITY"], "is_hub": false},
+                "RCK": {"nama": "RANCAEKEK", "provinsi": "JAWA BARAT", "lat": -6.96478, "lon": 107.756, "capabilities": ["INTERCITY"], "is_hub": false},
+                "LBJ": {"nama": "Lebak Jero", "provinsi": "JAWA BARAT", "lat": -7.05359, "lon": 107.894, "capabilities": ["INTERCITY"], "is_hub": false},
+                "BMW": {"nama": "Bumi Waluya", "provinsi": "JAWA BARAT", "lat": -7.05859, "lon": 108.0706, "capabilities": ["INTERCITY"], "is_hub": false},
+                "WB": {"nama": "Warung Bandrek", "provinsi": "JAWA BARAT", "lat": -7.0647, "lon": 108.007, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CB": {"nama": "CIBATU", "provinsi": "JAWA BARAT", "lat": -7.1001, "lon": 107.9796, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CPD": {"nama": "CIPEUNDEUY", "provinsi": "JAWA BARAT", "lat": -7.09357, "lon": 108.1006, "capabilities": ["INTERCITY"], "is_hub": false},
+                "GRT": {"nama": "GARUT", "provinsi": "JAWA BARAT", "lat": -7.20538, "lon": 107.8848, "capabilities": ["INTERCITY"], "is_hub": false},
+                "KRAI": {"nama": "KARANG SARI", "provinsi": "JAWA BARAT", "lat": -7.09827, "lon": 107.9312, "capabilities": ["INTERCITY"], "is_hub": false},
+                "LL": {"nama": "LELES", "provinsi": "JAWA BARAT", "lat": -7.08429, "lon": 107.8998, "capabilities": ["INTERCITY"], "is_hub": false},
+                "LO": {"nama": "LEUWIGOONG", "provinsi": "JAWA BARAT", "lat": -7.10327, "lon": 107.9582, "capabilities": ["INTERCITY"], "is_hub": false},
+                "PSJ": {"nama": "PASIRJENGKOL", "provinsi": "JAWA BARAT", "lat": -7.12864, "lon": 107.99229, "capabilities": ["INTERCITY"], "is_hub": false},
+                "WNR": {"nama": "WANARAJA", "provinsi": "JAWA BARAT", "lat": -7.16464, "lon": 107.97691, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CAA": {"nama": "Cirahayu", "provinsi": "JAWA BARAT", "lat": -7.13422, "lon": 108.1184, "capabilities": ["INTERCITY"], "is_hub": false},
+                "MNJ": {"nama": "Manonjaya", "provinsi": "JAWA BARAT", "lat": -7.35321, "lon": 108.3026, "capabilities": ["INTERCITY"], "is_hub": false},
+                "RJP": {"nama": "Rajapolah", "provinsi": "JAWA BARAT", "lat": -7.21948, "lon": 108.1912, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CAW": {"nama": "CIAWI", "provinsi": "JAWA BARAT", "lat": -7.15741, "lon": 108.1458, "capabilities": ["INTERCITY"], "is_hub": false},
+                "BJG": {"nama": "Bojong", "provinsi": "JAWA BARAT", "lat": -7.34729, "lon": 108.4294, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CI": {"nama": "CIAMIS", "provinsi": "JAWA BARAT", "lat": -7.32941, "lon": 108.3558, "capabilities": ["INTERCITY"], "is_hub": false},
+                "DWN": {"nama": "DAWUAN", "provinsi": "JAWA BARAT", "lat": -6.39319, "lon": 107.4334, "capabilities": ["INTERCITY"], "is_hub": false},
+                "KLI": {"nama": "KLARI", "provinsi": "JAWA BARAT", "lat": -6.34998, "lon": 107.3454, "capabilities": ["INTERCITY"], "is_hub": false},
+                "KOS": {"nama": "KOSAMBI", "provinsi": "JAWA BARAT", "lat": -6.3692, "lon": 107.3748, "capabilities": ["INTERCITY"], "is_hub": false},
+                "TB": {"nama": "TAMBUN", "provinsi": "JAWA BARAT", "lat": -6.25861, "lon": 107.0558, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CBR": {"nama": "CIBUNGUR", "provinsi": "JAWA BARAT", "lat": -6.4679, "lon": 107.4796, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CA": {"nama": "CIGANEA", "provinsi": "JAWA BARAT", "lat": -6.57349, "lon": 107.4308, "capabilities": ["INTERCITY"], "is_hub": false},
+                "PLD": {"nama": "PLERED", "provinsi": "JAWA BARAT", "lat": -6.64038, "lon": 107.3914, "capabilities": ["INTERCITY"], "is_hub": false},
+                "PWK": {"nama": "PURWAKARTA", "provinsi": "JAWA BARAT", "lat": -6.55267, "lon": 107.4464, "capabilities": ["INTERCITY"], "is_hub": false},
+                "SUT": {"nama": "SUKATANI", "provinsi": "JAWA BARAT", "lat": -6.6109, "lon": 107.4086, "capabilities": ["INTERCITY"], "is_hub": false},
+                "TAU": {"nama": "Tagog Apu", "provinsi": "JAWA BARAT", "lat": -6.81036, "lon": 107.463, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CD": {"nama": "CIKADONGDONG", "provinsi": "JAWA BARAT", "lat": -6.71521, "lon": 107.3904, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CLE": {"nama": "CILAME", "provinsi": "JAWA BARAT", "lat": -6.80328, "lon": 107.4638, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CPT": {"nama": "CIPATAT", "provinsi": "JAWA BARAT", "lat": -6.82208, "lon": 107.3858, "capabilities": ["INTERCITY"], "is_hub": false},
+                "GK": {"nama": "GADOBANGKONG", "provinsi": "JAWA BARAT", "lat": -6.86487, "lon": 107.5152, "capabilities": ["INTERCITY"], "is_hub": false},
+                "MSI": {"nama": "MASWATI", "provinsi": "JAWA BARAT", "lat": -6.76086, "lon": 107.409, "capabilities": ["INTERCITY"], "is_hub": false},
+                "PDL": {"nama": "PADALARANG", "provinsi": "JAWA BARAT", "lat": -6.84277, "lon": 107.4976, "capabilities": ["INTERCITY"], "is_hub": false},
+                "RH": {"nama": "RENDEH", "provinsi": "JAWA BARAT", "lat": -6.7359, "lon": 107.398, "capabilities": ["INTERCITY"], "is_hub": false},
+                "SKT": {"nama": "SASAKSAAT", "provinsi": "JAWA BARAT", "lat": -6.77917, "lon": 107.4316, "capabilities": ["INTERCITY"], "is_hub": false},
+                "AND": {"nama": "Andir", "provinsi": "JAWA BARAT", "lat": -6.9079, "lon": 107.5794, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CTH": {"nama": "CIKUDAPATEUH", "provinsi": "JAWA BARAT", "lat": -6.9187, "lon": 107.6262, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CMK": {"nama": "CIMEKAR", "provinsi": "JAWA BARAT", "lat": -6.94989, "lon": 107.715, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CMD": {"nama": "CIMINDI", "provinsi": "JAWA BARAT", "lat": -6.896, "lon": 107.5612, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CIR": {"nama": "CIROYOM", "provinsi": "JAWA BARAT", "lat": -6.91418, "lon": 107.5904, "capabilities": ["INTERCITY"], "is_hub": false},
+                "GDB": {"nama": "GEDEBAGE", "provinsi": "JAWA BARAT", "lat": -6.94092, "lon": 107.69, "capabilities": ["INTERCITY"], "is_hub": false},
+                "KAC": {"nama": "KIARA CONDONG", "provinsi": "JAWA BARAT", "lat": -6.92511, "lon": 107.6464, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CMI": {"nama": "CIMAHI", "provinsi": "JAWA BARAT", "lat": -6.88586, "lon": 107.536, "capabilities": ["INTERCITY"], "is_hub": false},
+                "AW": {"nama": "Awipari", "provinsi": "JAWA BARAT", "lat": -7.3537, "lon": 108.2744, "capabilities": ["INTERCITY"], "is_hub": false},
+                "IH": {"nama": "Indihiang", "provinsi": "JAWA BARAT", "lat": -7.28711, "lon": 108.2012, "capabilities": ["INTERCITY"], "is_hub": false},
+                "TSM": {"nama": "TASIKMALAYA", "provinsi": "JAWA BARAT", "lat": -7.32257, "lon": 108.2242, "capabilities": ["INTERCITY"], "is_hub": false},
+                "BJR": {"nama": "BANJAR", "provinsi": "JAWA BARAT", "lat": -7.3761, "lon": 108.5424, "capabilities": ["INTERCITY"], "is_hub": false},
+                "KNP": {"nama": "Karangpucung", "provinsi": "JAWA BARAT", "lat": -7.35352, "lon": 108.494, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CNP": {"nama": "CIREBON PRUJAKAN", "provinsi": "JAWA BARAT", "lat": -6.71918, "lon": 108.5588, "capabilities": ["INTERCITY"], "is_hub": false},
+                "MAJA": {"nama": "MAJA", "provinsi": "BANTEN", "lat": -6.33228, "lon": 106.3962, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CTR": {"nama": "Citeras", "provinsi": "BANTEN", "lat": -6.3349, "lon": 106.3328, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CCY": {"nama": "Cicayur", "provinsi": "BANTEN", "lat": -6.32959, "lon": 106.619, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CKY": {"nama": "Cikoya", "provinsi": "BANTEN", "lat": -6.33557, "lon": 106.4118, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CSK": {"nama": "Cisauk", "provinsi": "BANTEN", "lat": -6.32471, "lon": 106.6412, "capabilities": ["KOMUTER"], "is_hub": false},
+                "DAR": {"nama": "Daru", "provinsi": "BANTEN", "lat": -6.33789, "lon": 106.4924, "capabilities": ["KOMUTER"], "is_hub": false},
+                "TGS": {"nama": "Tigaraksa", "provinsi": "BANTEN", "lat": -6.32831, "lon": 106.4344, "capabilities": ["KOMUTER"], "is_hub": false},
+                "CT": {"nama": "CATANG", "provinsi": "BANTEN", "lat": -6.26569, "lon": 106.268, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CKL": {"nama": "CIKEUSAL", "provinsi": "BANTEN", "lat": -6.21698, "lon": 106.2446, "capabilities": ["INTERCITY"], "is_hub": false},
+                "JBU": {"nama": "JAMBU BARU", "provinsi": "BANTEN", "lat": -6.30292, "lon": 106.2606, "capabilities": ["INTERCITY"], "is_hub": false},
+                "TOJB": {"nama": "TONJONG BARU", "provinsi": "BANTEN", "lat": -6.03131, "lon": 106.1214, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CGD": {"nama": "CIGADING", "provinsi": "BANTEN", "lat": -6.02197, "lon": 105.9636, "capabilities": ["INTERCITY"], "is_hub": false},
+                "CLG": {"nama": "CILEGON", "provinsi": "BANTEN", "lat": -6.01959, "lon": 106.0532, "capabilities": ["INTERCITY"], "is_hub": false},
+                "KEN": {"nama": "KRENCENG", "provinsi": "BANTEN", "lat": -6.00977, "lon": 106.023, "capabilities": ["INTERCITY"], "is_hub": false},
+                "MER": {"nama": "MERAK", "provinsi": "BANTEN", "lat": -5.9303, "lon": 105.9972, "capabilities": ["INTERCITY"], "is_hub": false},
+                "KRA": {"nama": "KARANGANTU", "provinsi": "BANTEN", "lat": -6.039, "lon": 106.162, "capabilities": ["INTERCITY"], "is_hub": false},
+                "SG": {"nama": "SERANG", "provinsi": "BANTEN", "lat": -6.11237, "lon": 106.1586, "capabilities": ["INTERCITY"], "is_hub": false},
+                "WLT": {"nama": "WALANTAKA", "provinsi": "BANTEN", "lat": -6.1554, "lon": 106.2188, "capabilities": ["INTERCITY"], "is_hub": false},
+            };
+        }
+        
+        function getHardcodedFallbackRoutes() {
+            // FIX: Mengambil dari getIntercityRoutes() agar sinkron.
+            return getIntercityRoutes();
+        }
+
+        // --- Segmen KRL Dasar yang akan disimulasikan jadwal padatnya ---
+        function getSimulatedKRLSegments() {
+            // Dep, Arr, Distance (km), Duration (min), Valid Days (ALL untuk KRL 24/7)
+            return [
+                // Rangkasbitung Line
+                {"dep": "RK", "arr": "PDJ", "distance_km": 45, "duration_min": 45, "valid_days": "ALL"},
+                {"dep": "PDJ", "arr": "RK", "distance_km": 45, "duration_min": 45, "valid_days": "ALL"},
+                {"dep": "PDJ", "arr": "THB", "distance_km": 20, "duration_min": 20, "valid_days": "ALL"},
+                {"dep": "THB", "arr": "PDJ", "distance_km": 20, "duration_min": 20, "valid_days": "ALL"},
+                {"dep": "THB", "arr": "DU", "distance_km": 5, "duration_min": 5, "valid_days": "ALL"},
+                {"dep": "DU", "arr": "THB", "distance_km": 5, "duration_min": 5, "valid_days": "ALL"},
+                // Bogor Line (via Manggarai)
+                {"dep": "MRI", "arr": "DPB", "distance_km": 30, "duration_min": 40, "valid_days": "ALL"},
+                {"dep": "DPB", "arr": "MRI", "distance_km": 30, "duration_min": 40, "valid_days": "ALL"},
+                {"dep": "DPB", "arr": "BOO", "distance_km": 40, "duration_min": 30, "valid_days": "ALL"},
+                {"dep": "BOO", "arr": "DPB", "distance_km": 40, "duration_min": 30, "valid_days": "ALL"},
+                {"dep": "MRI", "arr": "JAKK", "distance_km": 15, "duration_min": 20, "valid_days": "ALL"},
+                {"dep": "JAKK", "arr": "MRI", "distance_km": 15, "duration_min": 20, "valid_days": "ALL"},
+                // Bekasi Line (via Manggarai/Jatinegara)
+                {"dep": "MRI", "arr": "JNG", "distance_km": 10, "duration_min": 15, "valid_days": "ALL"},
+                {"dep": "JNG", "arr": "MRI", "distance_km": 10, "duration_min": 15, "valid_days": "ALL"},
+                {"dep": "JNG", "arr": "BKS", "distance_km": 25, "duration_min": 30, "valid_days": "ALL"},
+                {"dep": "BKS", "arr": "JNG", "distance_km": 25, "duration_min": 30, "valid_days": "ALL"},
+                {"dep": "BKS", "arr": "CKR", "distance_km": 15, "duration_min": 20, "valid_days": "ALL"},
+                {"dep": "CKR", "arr": "BKS", "distance_km": 15, "duration_min": 20, "valid_days": "ALL"},
+                // Tangerang Line
+                {"dep": "DU", "arr": "TNG", "distance_km": 20, "duration_min": 25, "valid_days": "ALL"},
+                {"dep": "TNG", "arr": "DU", "distance_km": 20, "duration_min": 25, "valid_days": "ALL"},
+                // Koneksi Hub Lintas
+                {"dep": "DU", "arr": "JAKK", "distance_km": 5, "duration_min": 10, "valid_days": "ALL"},
+                {"dep": "JAKK", "arr": "DU", "distance_km": 5, "duration_min": 10, "valid_days": "ALL"},
+            ];
+        }
+
+
+        // --- Fungsi Helper untuk Menambah Rute Berulang (KRL) ---
+        // KRL kini disimulasikan 24/7 dengan frekuensi 15 menit
+        function addKRLRoutes(targetArray, dep, arr, distance_km, duration_min, valid_days) {
+            const MINUTES_IN_DAY = 24 * 60;
+            const freq_min = 15; 
+            
+            for (let t = 0; t < MINUTES_IN_DAY; t += freq_min) { 
+                const dep_time = minutesToTimeStr(t);
+                const arr_time_min = t + duration_min;
+                const arr_time = minutesToTimeStr(arr_time_min); 
+
+                targetArray.push({ 
+                    "dep": dep, "arr": arr, "train_id": "KRL_JAB", 
+                    "dep_time": dep_time, "arr_time": arr_time, 
+                    "price": calculateKRLPrice(distance_km), 
+                    "is_direct": false,
+                    "valid_days": "ALL", 
+                    "distance_km": distance_km 
+                });
+            }
+        }
+
+        // --- Fungsi Helper untuk Fallback KRL Routes ---
+        function getKRLRoutesForFallback() {
+            let routes = [];
+            // Gunakan segmen dasar KRL untuk mengisi fallback
+            const segments = getSimulatedKRLSegments();
+            segments.forEach(segment => {
+                 addKRLRoutes(routes, segment.dep, segment.arr, segment.distance_km, segment.duration_min, segment.valid_days);
+            });
+            return routes;
+        }
+        
+        /**
+         * Mengkonversi waktu milidetik absolut menjadi menit dari tengah malam (0-1439).
+         * Lebih robust menggunakan Date object.
+         */
+        function getMinutesInDay(ms_absolute) {
+            const date = new Date(ms_absolute);
+            return date.getHours() * 60 + date.getMinutes();
+        }
+
+        // --- UTILITY & ALGORITMA CORE ---
+        
+        function timeToMinutes(timeStr) {
+            if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0; 
+            const parts = timeStr.split(':');
+            return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        }
+        function minutesToTimeStr(totalMinutes) {
+            const minutesInDay = 24 * 60;
+            const normalizedMinutes = totalMinutes % minutesInDay;
+            const hours = Math.floor(normalizedMinutes / 60);
+            const minutes = normalizedMinutes % 60;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+
+        function durationMinutesToText(totalMinutes) {
+            if (totalMinutes < 0) return "0 Menit";
+            const totalDays = Math.floor(totalMinutes / (24 * 60));
+            const remainingMinutes = totalMinutes % (24 * 60);
+            const hours = Math.floor(remainingMinutes / 60);
+            const minutes = Math.round(remainingMinutes % 60);
+            
+            let parts = [];
+            if (totalDays > 0) parts.push(`${totalDays} Hari`);
+            if (hours > 0) parts.push(`${hours} Jam`);
+            if (minutes > 0 || (totalDays === 0 && hours === 0 && minutes === 0)) parts.push(`${minutes} Menit`);
+            
+            return parts.join(' ');
+        }
+        
+        function isRouteValidForDay(route, departure_ms) {
+            // Jika rute adalah KRL, selalu anggap valid (beroperasi 24/7 setiap hari)
+            if (route.train_id === "KRL_JAB") {
+                return true; 
+            }
+            
+            const validDaysStr = route.valid_days || "ALL";
+            if (validDaysStr.toUpperCase() === "ALL") return true;
+
+            const departureDate = new Date(departure_ms);
+            const currentDayIndex = departureDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+            const currentDayName = DAY_NAMES[currentDayIndex];
+
+            return validDaysStr.toUpperCase().includes(currentDayName);
+        }
+
+        // Helper Geografi untuk Offsetting (Map Stacking)
+        // Sumber: Haversine Formula and Bearing Calculation
+        const R_EARTH_KM = 6371;
+        function toRad(degrees) { return degrees * Math.PI / 180; }
+        function toDeg(radians) { return radians * 180 / Math.PI; }
+
+        /** Menghitung bearing (arah) dari titik 1 ke titik 2 */
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            lat1 = toRad(lat1); lat2 = toRad(lat2);
+            lon1 = toRad(lon1); lon2 = toRad(lon2);
+            const dLon = lon2 - lon1;
+            const y = Math.sin(dLon) * Math.cos(lat2);
+            const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+            return (toDeg(Math.atan2(y, x)) + 360) % 360; // 0 to 360 degrees
+        }
+
+        /** Menghitung koordinat baru dari titik awal, bearing, dan jarak */
+        function offsetLatLng(lat, lon, bearing, distance_km) {
+            const brng = toRad(bearing);
+            const latRad = toRad(lat);
+            const lonRad = toRad(lon);
+            const angularDistance = distance_km / R_EARTH_KM;
+
+            const newLatRad = Math.asin(
+                Math.sin(latRad) * Math.cos(angularDistance) +
+                Math.cos(latRad) * Math.sin(angularDistance) * Math.cos(brng)
+            );
+            const newLonRad = lonRad + Math.atan2(
+                Math.sin(brng) * Math.sin(angularDistance) * Math.cos(latRad),
+                Math.cos(angularDistance) - Math.sin(latRad) * Math.sin(newLatRad)
+            );
+
+            return [toDeg(newLatRad), toDeg(newLonRad)];
+        }
+
+
+        function haversine(lat1, lon1, lat2, lon2) {
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R_EARTH_KM * c;
+        }
+        
+        function _normalize(value, min_val, max_val) {
+            if (max_val <= min_val) return 0.0;
+            return (value - min_val) / (max_val - min_val);
+        }
+        
+        /**
+         * Helper untuk mendapatkan kapabilitas yang dibutuhkan berdasarkan tipe kereta.
+         */
+        function getRequiredCapability(trainType) {
+            // NOTE: Antarkota mencakup KA Lokal/Intercity, sehingga butuh INTERCITY capability
+            return (trainType === 'Komuter') ? 'KOMUTER' : 'INTERCITY';
+        }
+        
+        // --- START showAlert function (Moved UP to fix ReferenceError) ---
+        function showAlert(message, isError = true) {
+            // (Fungsi showAlert Dibiarkan Sesuai Asli)
+            const existingAlert = document.getElementById('customAlert');
+            if (existingAlert) existingAlert.remove();
+
+            const alertDiv = document.createElement('div');
+            alertDiv.id = 'customAlert';
+            alertDiv.style.cssText = `
+                position: absolute;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background-color: ${isError ? getCssVar('--alert-error') : getCssVar('--accent-primary')};
+                color: ${isError ? 'white' : getCssVar('--bg-primary')};
+                padding: 10px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+                z-index: 2000;
+                font-weight: bold;
+                transition: opacity 0.5s;
+                min-width: 250px;
+                text-align: center;
+            `;
+            // Penyesuaian posisi di mobile agar tidak menutupi stats bar
+            if (window.innerWidth <= 768) { alertDiv.style.bottom = '150px'; }
+            
+            alertDiv.textContent = message;
+            document.body.appendChild(alertDiv);
+
+            setTimeout(() => {
+                alertDiv.style.opacity = 0;
+                setTimeout(() => alertDiv.remove(), 500);
+            }, 3000);
+        }
+        // --- END showAlert function ---
+
+
+        class KAI_MultiObjective_Graph {
+            constructor(stations, routes, trains) {
+                this.stations = stations;
+                this.routes = routes;
+                this.trains = trains;
+                this.graph = routes; 
+                this.CONSTANTS = NORMALIZATION_CONSTANTS;
+            }
+            
+            /**
+             * Menghitung cost gabungan (g-score) dari satu rute.
+             */
+            calculate_cost(route_data, preferences) {
+                const [alpha, beta, gamma] = preferences;
+                
+                // 1. Biaya (W_C)
+                const price = route_data.price;
+                const W_C_norm = _normalize(price, this.CONSTANTS.MIN_PRICE, this.CONSTANTS.MAX_PRICE);
+
+                // 2. Waktu (W_T)
+                const dep_min = timeToMinutes(route_data.dep_time);
+                let arr_min = timeToMinutes(route_data.arr_time); 
+                
+                let duration_minutes = arr_min - dep_min;
+                if (duration_minutes < 0) duration_minutes += 24 * 60; 
+                
+                const duration_hours = duration_minutes / 60;
+                const W_T_norm = _normalize(duration_hours, this.CONSTANTS.MIN_DURATION_H, this.CONSTANTS.MAX_DURATION_H);
+
+                // 3. Preferensi (W_P) - Comfort/Kelas
+                const train_data = this.trains[route_data.train_id] || { comfort_score: 1.0 };
+                const comfort_score = train_data.comfort_score;
+                const W_P_norm = _normalize(comfort_score, 0.0, this.CONSTANTS.MAX_PENALTY_SCORE);
+
+                // Total Cost Weighted
+                const W_Total = (alpha * W_C_norm) + (beta * W_T_norm) + (gamma * W_P_norm);
+                
+                // Kalikan dengan duration_minutes agar biaya berbanding lurus dengan panjang rute/waktu
+                return W_Total * duration_minutes / 60; 
+            }
+
+            /**
+             * Heuristik (h-score) menggunakan jarak Haversine (straight line distance).
+             */
+            get_heuristic(current_code, goal_code) {
+                if (!this.stations[current_code] || !this.stations[goal_code]) return Infinity;
+                
+                const curr = this.stations[current_code];
+                const goal = this.stations[goal_code];
+                const distance_km = haversine(curr.lat, curr.lon, goal.lat, goal.lon);
+                
+                const min_cost_per_hour = 1.0; 
+                return (distance_km / 100) * min_cost_per_hour; 
+            }
+        }
+
+        // --- Implementasi Min-Heap Priority Queue (untuk Efisiensi A*) ---
+        
+        class PriorityQueue {
+            constructor() { this.heap = []; }
+            enqueue(item) { this.heap.push(item); this.bubbleUp(this.heap.length - 1); }
+            dequeue() {
+                if (this.isEmpty()) return null;
+                if (this.heap.length === 1) return this.heap.pop();
+                const min = this.heap[0];
+                this.heap[0] = this.heap.pop();
+                this.sinkDown(0);
+                return min;
+            }
+            isEmpty() { return this.heap.length === 0; }
+            bubbleUp(index) {
+                while (index > 0) {
+                    const parentIndex = Math.floor((index - 1) / 2);
+                    if (this.heap[index].f < this.heap[parentIndex].f) {
+                        [this.heap[index], this.heap[parentIndex]] = [this.heap[parentIndex], this.heap[index]];
+                        index = parentIndex;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            sinkDown(index) {
+                const left = 2 * index + 1;
+                const right = 2 * index + 2;
+                let smallest = index;
+
+                if (left < this.heap.length && this.heap[left].f < this.heap[smallest].f) { smallest = left; }
+                if (right < this.heap.length && this.heap[right].f < this.heap[smallest].f) { smallest = right; }
+
+                if (smallest !== index) {
+                    [this.heap[index], this.heap[smallest]] = [this.heap[smallest], this.heap[index]];
+                    this.sinkDown(smallest);
+                }
+            }
+        }
+
+        // Algoritma A* Multi-Kriteria (Inti Pencarian Multi-Transit)
+        function a_star_search(graph_obj, start_code, goal_code, preferences, start_date_obj, start_time_str) {
+            
+            const MS_IN_DAY = 24 * 60 * 60 * 1000;
+            const MINUTES_IN_DAY = 24 * 60;
+            const MAX_LAYOVER_MINUTES = 24 * 60 * 2; 
+
+            const pq = new PriorityQueue();
+            let g_scores = {}; 
+            let f_scores = {}; 
+            
+            // FIX: Gunakan setHours untuk konstruksi waktu awal agar stabil di semua timezone.
+            const [start_hour, start_minute] = start_time_str.split(':').map(Number);
+            const startDateTime = new Date(start_date_obj.getTime());
+            startDateTime.setHours(start_hour, start_minute, 0, 0); 
+            
+            const START_TIME_MS = startDateTime.getTime();
+
+            let arrival_time_at_node_ms = {}; 
+            let cameFrom = {}; 
+
+            const h_score = graph_obj.get_heuristic(start_code, goal_code);
+            
+            // Inisialisasi node awal
+            g_scores[start_code] = 0;
+            f_scores[start_code] = h_score;
+            arrival_time_at_node_ms[start_code] = START_TIME_MS;
+            
+            pq.enqueue({ f: f_scores[start_code], g: 0, u: start_code });
+
+            while (!pq.isEmpty()) {
+                const { f, g, u } = pq.dequeue(); 
+                
+                // Stasiun Hub sebagai Tujuan Akhir: Stasiun tujuan akhir tidak perlu memiliki koneksi keluar.
+                if (u === goal_code) {
+                    return reconstruct_path(cameFrom, start_code, goal_code, START_TIME_MS);
+                }
+
+                if (g > g_scores[u]) continue; 
+
+                const last_arr_time_ms = arrival_time_at_node_ms[u];
+                
+                // Mendapatkan train_id yang membawa kita ke stasiun U
+                let prev_train_id = null;
+                if (u !== start_code && cameFrom[u] && cameFrom[u].route) {
+                    prev_train_id = cameFrom[u].route.train_id;
+                }
+                const prev_train_type = prev_train_id ? graph_obj.trains[prev_train_id].type : null;
+                const station_u = graph_obj.stations[u] || {};
+
+                for (const route of graph_obj.graph[u] || []) {
+                    const v = route.arr;
+                    
+                    if (!route.train_id || !graph_obj.trains[route.train_id]) continue; 
+                    
+                    const current_train_type = graph_obj.trains[route.train_id].type;
+                    const station_v = graph_obj.stations[v] || {};
+
+                    const dep_route_time_min = timeToMinutes(route.dep_time); 
+                    
+                    // --- 0a. CEK KAPABILITAS STASIUN TUJUAN (v) ---
+                    const required_capability_v = getRequiredCapability(current_train_type);
+                    if (!(station_v.capabilities || []).includes(required_capability_v)) {
+                         continue; // Stasiun tujuan V tidak melayani jenis kereta ini
+                    }
+                    
+                    // --- 0b. ENFORCEMENT TRANSFER DI STASIUN U ---
+                    if (u !== start_code && prev_train_type !== null) {
+                        const required_capability_prev = getRequiredCapability(prev_train_type);
+                        
+                        // Rule 1: Stasiun U harus mendukung kereta yang BARU TIBA (prev_train)
+                        if (!(station_u.capabilities || []).includes(required_capability_prev)) {
+                            continue;
+                        }
+
+                        // Rule 2: Stasiun U harus mendukung kereta yang AKAN BERANGKAT (current_train)
+                        if (!(station_u.capabilities || []).includes(required_capability_v)) {
+                            continue; // Stasiun U tidak melayani jenis kereta yang akan berangkat
+                        }
+
+                        // Rule 3: KRL -> KRL (Inter-Line) HARUS di Hub
+                        if (prev_train_type === 'Komuter' && current_train_type === 'Komuter') {
+                            if (!station_u.is_hub) {
+                                continue; // Transfer KRL antar-jalur hanya diizinkan di stasiun HUB.
+                            }
+                        }
+                        
+                        // Rule 4: Antarkota <-> KRL Transfer HARUS di Mixed Hub
+                        if (prev_train_type !== current_train_type) {
+                            // Jika beralih tipe kereta (mis. Antarkota ke KRL),
+                            // stasiun U harus mendukung KEDUA tipe.
+                            if (!((station_u.capabilities || []).includes('KOMUTER') && (station_u.capabilities || []).includes('INTERCITY'))) {
+                                continue; 
+                            }
+                        }
+                    }
+                    
+                    // --- 0c. CEK VALIDITAS HARI ---
+                    if (!isRouteValidForDay(route, last_arr_time_ms)) {
+                        continue; // Lewati rute ini jika tidak beroperasi hari itu
+                    }
+
+                    // --- 1. Hitung Waktu Tunggu (Layover) dan Keberangkatan Absolut ---
+                    
+                    // Gunakan tanggal kedatangan terakhir (last_arr_time_ms) sebagai dasar
+                    const base_date = new Date(last_arr_time_ms);
+                    
+                    // Buat objek Date untuk jadwal keberangkatan rute
+                    const scheduled_dep_date = new Date(base_date.getTime());
+                    
+                    const dep_hour_for_date = Math.floor(dep_route_time_min / 60);
+                    const dep_minute_for_date = dep_route_time_min % 60;
+
+                    scheduled_dep_date.setHours(dep_hour_for_date, dep_minute_for_date, 0, 0);
+
+                    let departure_ms_absolute = scheduled_dep_date.getTime();
+
+                    // FIX UTAMA: Logika Sederhana untuk Lompatan Hari (Jika jadwal sudah terlewat)
+                    if (departure_ms_absolute < last_arr_time_ms) {
+                        // JIKA INI BUKAN HOP PERTAMA (u !== start_code): Cek apakah hanya perlu geser 24 jam
+                        // JIKA INI HOP PERTAMA (u == start_code): Cek apakah sudah terlewat dari jam start, dan geser 24 jam jika perlu.
+                        departure_ms_absolute += MS_IN_DAY;
+                    }
+
+                    const layover_ms = departure_ms_absolute - last_arr_time_ms;
+                    const layover_minutes = layover_ms / (60 * 1000);
+                    
+                    // Transit minimal 5 menit (Buffer waktu transfer)
+                    if (u !== start_code && layover_minutes < 5 && prev_train_type !== null) { 
+                        continue;
+                    } 
+                    
+                    // Cek maksimal layover (48 jam)
+                    if (layover_minutes > MAX_LAYOVER_MINUTES) continue; 
+
+                    // --- 2. Hitung Cost Baru (g_new) ---
+                    const route_cost_g = graph_obj.calculate_cost(route, preferences);
+                    const layover_penalty = (layover_minutes / 60) * 0.5;
+
+                    const g_new = g + route_cost_g + layover_penalty;
+
+                    // --- 3. Perbarui Waktu Kedatangan Absolut ---
+                    let arr_route_time_min = timeToMinutes(route.arr_time);
+                    let route_duration_minutes = arr_route_time_min - dep_route_time_min;
+                    if (route_duration_minutes < 0) {
+                        route_duration_minutes += MINUTES_IN_DAY; 
+                    }
+                    
+                    const travel_minutes = layover_minutes + route_duration_minutes;
+                    const travel_ms = travel_minutes * 60 * 1000;
+
+                    const new_arrival_ms = last_arr_time_ms + travel_ms;
+
+                    // --- 4. Relaksasi A* ---
+                    if (g_scores[v] === undefined || g_new < g_scores[v]) {
+                        g_scores[v] = g_new;
+                        arrival_time_at_node_ms[v] = new_arrival_ms; 
+                        
+                        cameFrom[v] = { 
+                            predecessor: u, 
+                            route: { 
+                                ...route, 
+                                layover_minutes: Math.round(layover_minutes),
+                                actual_departure_ms: departure_ms_absolute // Simpan waktu keberangkatan yang sudah disesuaikan
+                            } 
+                        };
+                        
+                        const h_score_v = graph_obj.get_heuristic(v, goal_code);
+                        f_scores[v] = g_new + h_score_v;
+
+                        pq.enqueue({ f: f_scores[v], g: g_new, u: v });
+                    }
+                }
+            }
+            return null; // Rute tidak ditemukan
+        }
+
+        /**
+         * Merekonstruksi jalur optimal dari peta cameFrom.
+         * @returns {Object} { segments, total_duration_minutes }
+         */
+        function reconstruct_path(cameFrom, start_code, goal_code, START_TIME_MS) {
+            let current = goal_code;
+            const segments = [];
+            
+            // Loop untuk merekonstruksi dari tujuan ke awal
+            while (current !== start_code) {
+                const prev = cameFrom[current];
+                if (!prev) return null; 
+                
+                const route = prev.route;
+                const train_data = TRAINS_DATA[route.train_id];
+                
+                // FIX: Tambahkan pengecekan train_data untuk menghindari crash
+                if (!route.train_id || !train_data) {
+                    console.error("Integrity Error: Reconstructed path segment missing valid train_id:", route.train_id);
+                    return null; 
+                }
+                // END FIX
+                
+                let dep_min = timeToMinutes(route.dep_time);
+                let arr_min = timeToMinutes(route.arr_time);
+                let duration_minutes = arr_min - dep_min;
+                if (duration_minutes < 0) duration_minutes += 24 * 60; 
+                
+                
+                // Gunakan actual_departure_ms yang disimpan saat A*
+                const departure_ms_absolute = route.actual_departure_ms;
+                const arrival_ms_absolute = departure_ms_absolute + (duration_minutes * 60 * 1000);
+
+                segments.unshift({
+                    type: train_data.type,
+                    train_name: `${route.train_id} (${train_data.class})`,
+                    train_id: route.train_id, // FIX DITAMBAHKAN: Memastikan train_id disimpan ke dalam segmen
+                    departure_station: STATIONS[route.dep].nama,
+                    arrival_station: STATIONS[route.arr].nama,
+                    dep_code: route.dep,
+                    arr_code: route.arr,
+                    // Tambahkan tanggal absolut untuk UI
+                    departure_datetime: new Date(departure_ms_absolute),
+                    arrival_datetime: new Date(arrival_ms_absolute), 
+                    departure_time: route.dep_time, // Waktu harian
+                    arrival_time: route.arr_time, // Waktu harian
+                    price: route.price,
+                    duration_minutes: duration_minutes,
+                    layover_minutes: route.layover_minutes || 0,
+                    distance_km: route.distance_km || 0
+                });
+                current = prev.predecessor;
+            }
+
+            // Setelah semua segmen dihitung, hitung total durasi dari segmen pertama ke kedatangan terakhir
+            if (segments.length === 0) return { segments: [], total_duration_minutes: 0 };
+            
+            const last_arrival_ms = segments[segments.length - 1].arrival_datetime.getTime();
+            const total_duration_minutes = Math.round((last_arrival_ms - START_TIME_MS) / (60 * 1000));
+
+            // Perbarui segmen pertama untuk mencerminkan waktu keberangkatan awal yang diminta user
+            segments[0].departure_datetime = new Date(START_TIME_MS);
+            segments[0].layover_minutes = 0; // Layover di awal diabaikan
+            
+            return { segments, total_duration_minutes };
+        }
+
+        /**
+         * Mengambil bobot preferensi berdasarkan pilihan radio.
+         */
+        function getPreferences(priority) {
+            let alpha_cost, beta_time, gamma_preference; // Cost, Time, Preference
+
+            if (priority === 'cepat') { 
+                alpha_cost = 0.2; beta_time = 0.6; gamma_preference = 0.2; 
+            } else if (priority === 'murah') { 
+                alpha_cost = 0.6; beta_time = 0.2; gamma_preference = 0.2; 
+            } else { // 'all'
+                alpha_cost = 0.35; beta_time = 0.35; gamma_preference = 0.3; // Bobot netral/balance
+            }
+            
+            return [alpha_cost, beta_time, gamma_preference];
+        }
+        
+        /**
+         * Membuat fingerprint unik untuk deduplikasi rute.
+         */
+        function getRouteFingerprint(route) {
+            if (route.status !== 'success' || route.segments.length === 0) return null;
+            // Gunakan kombinasi kode stasiun dan biaya total untuk identifikasi unik
+            const dep_codes = route.segments.map(s => s.dep_code).join('-');
+            const arr_codes = route.segments.map(s => s.arr_code).join('-');
+            // Gunakan total_cost_idr yang dibulatkan agar route yang sangat mirip (perbedaan 1 rupiah) dianggap sama
+            const roundedCost = Math.round(route.total_cost_idr / 1000); 
+            return `${dep_codes}|${arr_codes}|${roundedCost}|${route.total_transfers}`;
+        }
+
+
+        async function drawRoute() {
+            if (!routeLayer || !map) {
+                showAlert('Peta belum dimuat sepenuhnya. Mohon tunggu sebentar.', true);
+                return;
+            }
+            routeLayer.clearLayers();
+            document.getElementById('route-options-container').innerHTML = '';
+
+            const startBtn = document.getElementById('search-route-btn');
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<div class="loader"></div> Menganalisis Rute...';
+            
+            try {
+                // Mendapatkan input
+                const priority = document.querySelector('input[name="priority-select"]:checked').value;
+                const startInput = document.getElementById('start-location').value.toUpperCase().trim();
+                const endInput = document.getElementById('end-location').value.toUpperCase().trim();
+                let startTime = document.getElementById('time-select').value; // Default start time
+                const startDateStr = document.getElementById('date-select').value;
+                
+                // Validasi Tanggal
+                if (!startDateStr) {
+                    showAlert('Mohon pilih tanggal keberangkatan.', true);
+                    return;
+                }
+                // FIX: Menerima tanggal sebagai string ISO
+                const startDateObj = new Date(startDateStr); 
+                
+                const startStn = getNearestStation(startInput);
+                const endStn = getNearestStation(endInput);
+                
+                const start_kodkod = startStn.station ? startStn.station.kodkod : null;
+                const end_kodkod = endStn.station ? endStn.station.kodkod : null;
+
+                if (!start_kodkod || !end_kodkod) {
+                    showAlert('Nama/Kode stasiun tidak valid atau tidak ditemukan dalam database.', true);
+                    return;
+                }
+                if (start_kodkod === end_kodkod) {
+                    showAlert('Stasiun awal dan tujuan sama.', true);
+                    return;
+                }
+                
+                // --- Pengecekan Kapabilitas Stasiun Awal & Akhir ---
+                const start_stn_cap = STATIONS[start_kodkod]?.capabilities || [];
+                const end_stn_cap = STATIONS[end_kodkod]?.capabilities || [];
+                
+                // Tentukan jenis kereta yang tersedia di stasiun A dan Z. 
+                // Jika tidak ada Intercity dan Komuter, maka tidak ada rute yang bisa dimulai/diakhiri
+                if (start_stn_cap.length === 0 || end_stn_cap.length === 0) {
+                     showAlert('Stasiun awal atau tujuan tidak memiliki layanan kereta aktif.', true);
+                     return;
+                }
+
+                allRouteOptions = [];
+                let uniqueRoutesMap = new Map(); // Untuk deduplikasi rute
+
+                // Logika Pencarian rute: Time Sampled Search jika 'all' dipilih
+                if (priority === 'all') {
+                    // Coba mencari rute dengan sampel waktu yang berbeda
+                    const SAMPLE_START_TIMES = ['04:00', '08:00', '12:00', '16:00', '20:00', '23:00'];
+                    const pref_cepat = getPreferences('cepat');
+                    const pref_murah = getPreferences('murah');
+
+                    for (const sampleTime of SAMPLE_START_TIMES) {
+                        // 1. Opsi Cepat
+                        let result_cepat = run_multi_objective_search(start_kodkod, end_kodkod, pref_cepat, startDateObj, sampleTime);
+                        if (result_cepat.status === 'success') {
+                            const fingerprint = getRouteFingerprint(result_cepat);
+                            if (!uniqueRoutesMap.has(fingerprint)) {
+                                uniqueRoutesMap.set(fingerprint, { ...result_cepat, name: `Opsi Tercepat (Start ~${sampleTime})` });
+                            }
+                        }
+
+                        // 2. Opsi Murah
+                        let result_murah = run_multi_objective_search(start_kodkod, end_kodkod, pref_murah, startDateObj, sampleTime);
+                        if (result_murah.status === 'success') {
+                            const fingerprint = getRouteFingerprint(result_murah);
+                            if (!uniqueRoutesMap.has(fingerprint)) {
+                                uniqueRoutesMap.set(fingerprint, { ...result_murah, name: `Opsi Termurah (Start ~${sampleTime})` });
+                            }
+                        }
+                    }
+                    
+                    // Konversi Map ke Array
+                    allRouteOptions = Array.from(uniqueRoutesMap.values());
+                    // Tambahkan opsi Netral/Seimbang (hanya dari sampel 08:00 jika tidak ada hasil sama)
+                    const result_netral_default = run_multi_objective_search(start_kodkod, end_kodkod, getPreferences('all'), startDateObj, '08:00');
+                     if (result_netral_default.status === 'success') {
+                        const fingerprint = getRouteFingerprint(result_netral_default);
+                        if (!uniqueRoutesMap.has(fingerprint)) {
+                            allRouteOptions.push({ ...result_netral_default, name: 'Opsi Seimbang (Default)' });
+                        }
+                    }
+
+                    // Sortir hasil gabungan berdasarkan total cost (Termurah di atas)
+                    allRouteOptions.sort((a, b) => a.total_cost_idr - b.total_cost_idr);
+
+
+                } else { 
+                    // Jika memilih Cepat atau Murah (Prioritas Tunggal pada Jam Spesifik)
+                    const preferences = getPreferences(priority);
+                    const result_data = run_multi_objective_search(start_kodkod, end_kodkod, preferences, startDateObj, startTime);
+
+                    if (result_data.status === 'error') {
+                        showAlert(`Error: ${result_data.message}`, true);
+                        return;
+                    }
+                    allRouteOptions.push({ 
+                        ...result_data, 
+                        name: (priority === 'cepat' ? 'Rute Paling Cepat' : 'Rute Paling Murah'),
+                    });
+                }
+                
+                if (allRouteOptions.length === 0) {
+                     showAlert('Tidak ada rute yang ditemukan untuk kriteria ini. Coba ubah Tanggal/Jam atau periksa apakah data Anda (Jadwal Antarkota/Lokal) terhubung melalui stasiun Hub yang benar (MRI, JNG, CKR, RK, DU).', true);
+                     return;
+                }
+
+                // Tampilkan opsi dan pilih yang pertama
+                displayRouteOptions(allRouteOptions);
+                selectRoute(0);
+                showAlert(`Ditemukan ${allRouteOptions.length} opsi rute optimal!`, false);
+
+            } catch(e) {
+                console.error("Kesalahan umum saat menggambar rute:", e);
+                showAlert(`Terjadi kesalahan tak terduga: ${e.message}`, true);
+            } finally {
+                startBtn.disabled = false;
+                startBtn.innerHTML = 'CARI RUTE & LIHAT JALUR';
+            }
+        }
+
+        function run_multi_objective_search(start_code, goal_code, preferences, start_date_obj, start_time) {
+            try {
+                const kai_graph = new KAI_MultiObjective_Graph(STATIONS, ROUTES_DATA, TRAINS_DATA);
+                
+                if (!kai_graph.stations[start_code] || !kai_graph.stations[goal_code]) {
+                    return {"status": "error", "message": "Kode stasiun awal atau tujuan tidak valid dalam data."};
+                }
+
+                // Cek apakah stasiun awal memiliki rute keberangkatan
+                if (!ROUTES_DATA[start_code] || ROUTES_DATA[start_code].length === 0) {
+                     return {"status": "error", "message": `Stasiun awal ${start_code} tidak memiliki rute keberangkatan terdaftar (periksa Google Sheet dan Simulasi KRL).`};
+                }
+
+
+                const result_path = a_star_search(kai_graph, start_code, goal_code, preferences, start_date_obj, start_time);
+                
+                if (!result_path || result_path.segments.length === 0) {
+                    // --- DIAGNOSTIK CKR KE BD (Untuk membantu pengguna mengatasi masalah data/waktu) ---
+                    let debugMessage = "Tidak ada rute kereta api yang terhubung ditemukan.";
+                    
+                    if (start_code === 'CKR' && goal_code === 'BD' && ROUTES_DATA['CKR']) {
+                        const ckr_bd_routes = ROUTES_DATA['CKR'].filter(r => r.arr === 'BD' && (TRAINS_DATA[r.train_id]?.type === 'Antarkota' || TRAINS_DATA[r.train_id]?.type === 'Lokal'));
+                        
+                        if (ckr_bd_routes.length === 0) {
+                             debugMessage = "DIAGNOSTIK CRITICAL: Data CKR ke BD (Antarkota/Lokal) TIDAK DITEMUKAN dalam ROUTES_DATA. Pastikan data Google Sheet Anda dibaca dengan benar, termasuk kolom distance_km.";
+                        } else {
+                            const routesValidForDay = ckr_bd_routes.filter(r => isRouteValidForDay(r, start_date_obj.getTime()));
+                            if (routesValidForDay.length === 0) {
+                                 debugMessage = `DIAGNOSTIK: ${ckr_bd_routes.length} jadwal CKR ke BD ditemukan, tetapi TIDAK ADA yang beroperasi pada TANGGAL yang dipilih. Periksa kolom valid_days.`;
+                            } else {
+                                debugMessage = `DIAGNOSTIK: ${routesValidForDay.length} jadwal CKR ke BD beroperasi hari ini, tetapi A* gagal menemukan koneksi. Coba ubah Jam Berangkat ke ${ckr_bd_routes[0].dep_time} atau pilih 'Multi-Opsi Sepanjang Hari'.`;
+                            }
+                        }
+                    } else {
+                         debugMessage += " Coba ubah Tanggal/Jam atau periksa apakah data Anda (Jadwal Antarkota/Lokal) terhubung melalui stasiun Hub yang benar (MRI, JNG, CKR, RK, DU).";
+                    }
+
+                    return {"status": "error", "message": debugMessage};
+                    // --- END DIAGNOSTIK ---
+                }
+                
+                const segments = result_path.segments;
+                const total_duration_minutes = result_path.total_duration_minutes;
+
+                let total_price = 0;
+                let total_cost_g_raw = 0; 
+
+                // Logika Tarif KRL Kumulatif
+                let totalKRLDistanceKm = 0;
+                let onlyKRL = true;
+                let nonKRLPrice = 0;
+
+                for (const segment of segments) {
+                    
+                    const trainData = TRAINS_DATA[segment.train_id];
+                    
+                    // FIX: Periksa apakah data kereta valid sebelum mencoba membaca properti 'type'
+                    if (!trainData || !trainData.type) {
+                        // Jika ada data yang rusak, kita log dan abaikan segmen.
+                        console.error("Integrity Warning: Segment in final path has invalid train ID:", segment.train_id);
+                        continue; 
+                    }
+                    
+                    const trainType = trainData.type;
+                    // END FIX
+
+                    if (trainType === 'Komuter') {
+                        totalKRLDistanceKm += segment.distance_km || 0;
+                    } else {
+                        onlyKRL = false;
+                        nonKRLPrice += segment.price; 
+                    }
+                    
+                    // G-score calculation remains based on segment price for A* efficiency
+                    const temp_route_data = {
+                         dep_time: segment.departure_time, arr_time: segment.arrival_time, price: segment.price, train_id: segment.train_id || "KRL_JAB" 
+                    };
+                    total_cost_g_raw += kai_graph.calculate_cost(temp_route_data, preferences);
+                    total_cost_g_raw += (segment.layover_minutes / 60) * 0.5; 
+                }
+
+                if (onlyKRL) {
+                    // Jika 100% KRL, hitung biaya total hanya sekali
+                    total_price = calculateKRLPrice(totalKRLDistanceKm);
+                } else {
+                    // Jika rute campuran, hitung KRL secara kumulatif + Antarkota/Lokal
+                    const calculatedKRLPrice = calculateKRLPrice(totalKRLDistanceKm);
+                    total_price = calculatedKRLPrice + nonKRLPrice;
+                }
+                
+                return {
+                    status: "success",
+                    start_station_name: STATIONS[start_code].nama,
+                    goal_station_name: STATIONS[goal_code].nama,
+                    total_cost_idr: total_price,
+                    total_duration_text: durationMinutesToText(total_duration_minutes),
+                    total_transfers: segments.length > 0 ? segments.length - 1 : 0,
+                    g_score_avg: total_cost_g_raw / (segments.length || 1), 
+                    segments: segments
+                };
+            } catch (e) {
+                console.error("Critical Error in A* Execution:", e);
+                return {"status": "error", "message": `Terjadi kesalahan internal: ${e.message}. Periksa konsol.`};
+            }
+        }
+
+        // --- SARAN AI CORE FUNCTION ---
+        async function generateAITransitSuggestions(stationCode, layoverMinutes) {
+            const btn = document.getElementById('saran-ai-btn');
+            const resultBox = document.getElementById('saran-ai-result-box');
+            const originalText = btn.innerHTML;
+            
+            btn.disabled = true;
+            btn.innerHTML = `<div class="loader"></div> Mencari Saran...`;
+            
+            // Perbaikan: Tambahkan pemeriksaan null
+            if (resultBox) { resultBox.innerHTML = ''; }
+            
+            const stationName = STATIONS[stationCode].nama;
+            const durationText = durationMinutesToText(layoverMinutes);
+            
+            // Konversi menit ke format yang bisa dipahami LLM (misal: 1 jam 30 menit)
+            const durationQuery = `${Math.floor(layoverMinutes / 60)} jam ${layoverMinutes % 60} menit`;
+
+            const systemPrompt = "Anda adalah asisten perjalanan yang ramah. Berikan 3-5 rekomendasi kegiatan cepat di sekitar stasiun kereta api yang diberikan. Sertakan jarak perkiraan atau waktu tempuh (maksimal 15 menit) dari stasiun dan fokus pada aktivitas yang realistis untuk waktu tunggu (layover). Format jawaban Anda sebagai daftar berpoin yang jelas dan ringkas dalam Bahasa Indonesia.";
+            
+            const userQuery = `Saya punya waktu transit di stasiun **${stationName}** selama **${durationQuery}**. Tolong berikan saran aktivitas realistis yang bisa saya lakukan untuk mengisi waktu.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
+
+            // Implementasi Exponential Backoff untuk mengatasi potential throttling
+            const MAX_RETRIES = 3;
+            let response = null;
+
+            for (let i = 0; i < MAX_RETRIES; i++) {
+                try {
+                    response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (response.ok) break; // Keluar jika berhasil
+                    
+                    // Jika ada error non-koneksi, lempar error untuk retry
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                    
+                } catch (error) {
+                    if (i === MAX_RETRIES - 1) {
+                        console.error("Saran AI API failed after multiple retries:", error);
+                        if (resultBox) { resultBox.innerHTML = `❌ Gagal menghubungi layanan Saran AI. Coba lagi nanti.`; }
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                        return;
+                    }
+                    // Tunggu dengan delay eksponensial (1s, 2s, 4s)
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+                }
+            }
+
+
+            try {
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, tidak dapat menemukan saran saat ini.";
+                
+                // Ganti newline dengan <br> untuk format yang lebih baik di HTML
+                if (resultBox) { resultBox.innerHTML = text.replace(/\n/g, '<br>'); }
+
+            } catch (e) {
+                console.error("Error processing Saran AI response:", e);
+                if (resultBox) { resultBox.innerHTML = `❌ Terjadi kesalahan saat memproses data.`; }
+            }
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+
+        // --- FUNGSI FRONT-END UI & AUTOSUGGEST ---
+
+        /**
+         * Mengambil nilai CSS variable
+         */
+        function getCssVar(name) {
+            return getComputedStyle(document.body).getPropertyValue(name).trim();
+        }
+
+        /**
+         * Mengupdate konstanta warna JS berdasarkan tema saat ini
+         */
+        function updateColorConstants() {
+            COLOR_KAI = getCssVar('--accent-primary');
+            COLOR_COMMUTER = getCssVar('--accent-secondary');
+            COLOR_PRIMARY_TEXT = getCssVar('--text-primary');
+        }
+
+        /**
+         * Fungsi inisialisasi Map Leaflet. Ini harus dipanggil setelah Leaflet dimuat.
+         */
+        function initMap() {
+            if (typeof L === 'undefined') {
+                console.error("Leaflet library (L) is not loaded.");
+                return;
+            }
+
+            map = L.map('map', { zoomControl: false }).setView(initialCoords, initialZoom);
+            L.control.zoom({ position:'bottomright' }).addTo(map);
+
+            // Ganti Tile Layer berdasarkan mode tema (Mapbox gelap/terang)
+            L.tileLayer(
+                localStorage.getItem('theme') === 'light-mode' 
+                    ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+                    : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', 
+                {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                    maxZoom: 18, minZoom: 4
+                }
+            ).addTo(map);
+            
+            const bounds = L.latLngBounds([[-8.0, 105.0], [-5.0, 110.0]]); // Batas di sekitar Jawa Barat/DKI
+            map.setMaxBounds(bounds);
+
+            stasiunLayer = L.layerGroup().addTo(map); 
+            routeLayer = L.layerGroup().addTo(map);
+        }
+
+        
+        function getNearestStation(query) {
+            const queryUpper = query.toUpperCase().trim();
+            
+            // 1. Cek berdasarkan KODKOD (pencocokan sempurna)
+            if (STATIONS[queryUpper]) {
+                const s = STATIONS[queryUpper];
+                return { station: { kodkod: queryUpper, lat: s.lat, lon: s.lon, nama: s.nama } };
+            }
+            
+            // 2. Cek berdasarkan NAMA STASIUN (pencocokan parsial)
+            let bestMatch = null;
+            let bestScore = 0;
+
+            for (const kodkod in STATIONS) {
+                const s = STATIONS[kodkod];
+                const namaUpper = s.nama.toUpperCase();
+                
+                if (namaUpper.includes(queryUpper)) {
+                    // Berikan skor yang lebih tinggi jika cocok di awal kata
+                    let score = 1;
+                    if (namaUpper.startsWith(queryUpper)) score = 2;
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = { kodkod: kodkod, lat: s.lat, lon: s.lon, nama: s.nama };
+                    }
+                }
+            }
+            
+            return { station: bestMatch };
+        }
+        
+        function filterStations(query) {
+            const queryUpper = query.toUpperCase().trim();
+            if (!queryUpper) return [];
+            
+            return Object.keys(STATIONS)
+                .filter(kodkod => {
+                    const stn = STATIONS[kodkod];
+                    return stn.nama.toUpperCase().includes(queryUpper) || kodkod.includes(queryUpper);
+                })
+                .slice(0, 5) // Batasi 5 hasil
+                .map(kodkod => ({ kodkod, nama: STATIONS[kodkod].nama }));
+        }
+
+        function setupAutocomplete(inputId, suggestionsId) {
+            const input = document.getElementById(inputId);
+            const container = document.getElementById(suggestionsId);
+            let timeout = null;
+
+            input.addEventListener('input', () => {
+                if (timeout) clearTimeout(timeout);
+                
+                timeout = setTimeout(() => {
+                    const query = input.value;
+                    container.innerHTML = '';
+
+                    if (query.length < 2) {
+                        return;
+                    }
+
+                    const suggestions = filterStations(query);
+
+                    suggestions.forEach(stn => {
+                        const item = document.createElement('div');
+                        item.className = 'suggestion-item';
+                        item.innerHTML = `<b>${stn.nama}</b> (${stn.kodkod})`;
+                        
+                        item.addEventListener('click', () => {
+                            input.value = stn.kodkod; // Set KODE ke input
+                            container.innerHTML = '';
+                        });
+                        container.appendChild(item);
+                    });
+
+                    if (suggestions.length === 0 && query.length >= 2) {
+                        container.innerHTML = `<div class="suggestion-item" style="color:var(--alert-error);">Tidak ditemukan.</div>`;
+                    }
+
+                }, 300); // Debounce 300ms
+            });
+
+            // Sembunyikan saran saat input kehilangan fokus
+            input.addEventListener('blur', () => {
+                setTimeout(() => {
+                    container.innerHTML = '';
+                }, 200);
+            });
+        }
+
+
+        function renderStations() {
+            if (!stasiunLayer) return;
+            L.circleMarker([initialCoords[0], initialCoords[1]], { radius: 0 }).addTo(stasiunLayer); // Titik awal untuk map fit
+            stasiunLayer.clearLayers(); 
+            for (const kodkod in STATIONS) {
+                const station = STATIONS[kodkod];
+                // Tampilkan kapabilitas di popup
+                const caps = (station.capabilities || []).join(' & ');
+                L.circleMarker([station.lat, station.lon], {
+                    radius: 4, 
+                    fillColor: COLOR_PRIMARY_TEXT, 
+                    color: getCssVar('--bg-primary'), 
+                    weight: 1, fillOpacity: 0.8
+                }).addTo(stasiunLayer)
+                .bindPopup(`<b>${station.nama}</b> (${kodkod})<br>Kapabilitas: ${caps} ${station.is_hub ? '(HUB)' : ''}`);
+            }
+        }
+        
+        // Map untuk melacak berapa kali sebuah segmen telah digambar (untuk offsetting)
+        let segmentDrawCount = new Map();
+        const OFFSET_DISTANCE_KM = 0.05; // 50 meter offset
+
+        function updateStatBar(result) {
+            document.getElementById('stat-time').textContent = result.total_duration_text;
+            document.getElementById('stat-cost').textContent = `Rp ${result.total_cost_idr.toLocaleString('id-ID')}`;
+            document.getElementById('stat-transfers').textContent = result.segments.length > 0 ? result.segments.length - 1 : 0;
+            // Ubah warna stat box sesuai hasil (hanya untuk menunjukkan update)
+            document.querySelector('.stat-box:nth-child(1)').style.borderLeftColor = COLOR_KAI;
+            document.querySelector('.stat-box:nth-child(2)').style.borderLeftColor = COLOR_COMMUTER;
+            document.querySelector('.stat-box:nth-child(3)').style.borderLeftColor = COLOR_KAI;
+        }
+
+        function displayRouteOptions(routes) {
+            const container = document.getElementById('route-options-container');
+            container.innerHTML = '';
+            
+            if (routes.length === 0) {
+                container.innerHTML = '<p style="font-size: 0.9em; color: var(--alert-error); padding: 5px 0;">Tidak ada rute yang ditemukan.</p>';
+                return;
+            }
+
+            routes.forEach((route, index) => {
+                const card = document.createElement('div');
+                card.id = `route-card-${index}`;
+                card.className = 'route-card';
+                
+                // Tambahkan waktu keberangkatan dan kedatangan absolut pertama/terakhir
+                const firstSegment = route.segments[0];
+                const lastSegment = route.segments[route.segments.length - 1];
+                
+                const formatTime = (date) => new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(date);
+                const formatDay = (date) => new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short' }).format(date);
+
+                const departureTimeLabel = `${formatTime(firstSegment.departure_datetime)}`;
+                const arrivalTimeLabel = `${formatTime(lastSegment.arrival_datetime)} (${formatDay(lastSegment.arrival_datetime)})`;
+                
+
+                card.innerHTML = `
+                    <div class="route-card-title">${route.name}</div>
+                    <div class="route-card-detail">
+                        Berangkat: <b>${departureTimeLabel}</b> &rarr; Tiba: <b>${arrivalTimeLabel}</b>
+                    </div>
+                    <div class="route-card-detail">
+                        Waktu Total: <b>${durationMinutesToText(route.total_duration_minutes)}</b> 
+                        &bull; Biaya: <span class="route-card-price">Rp ${route.total_cost_idr.toLocaleString('id-ID')}</span>
+                    </div>
+                    <div class="route-card-detail">
+                        Transit: ${route.segments.length - 1}x 
+                    </div>
+                `;
+                card.onclick = () => selectRoute(index);
+                container.appendChild(card);
+            });
+        }
+        
+        function selectRoute(index) {
+            const routeData = allRouteOptions[index];
+            if (!routeLayer) return; // Pengaman
+            
+            routeLayer.clearLayers();
+            document.querySelectorAll('.route-card').forEach(card => card.classList.remove('selected'));
+            
+            const selectedRouteCard = document.getElementById(`route-card-${index}`);
+            if (selectedRouteCard) {
+                selectedRouteCard.classList.add('selected');
+            }
+            
+
+            let allCoords = [];
+            const segments = routeData.segments;
+            
+            // Reset dan inisialisasi map untuk offset rute
+            segmentDrawCount = new Map();
+
+            const dateFormatter = new Intl.DateTimeFormat('id-ID', {
+                day: 'numeric', month: 'short'
+            });
+
+            segments.forEach((segment, i) => {
+                const dep_stn = STATIONS[segment.dep_code];
+                const arr_stn = STATIONS[segment.arr_code];
+                
+                // Kunci unik untuk segmen fisik (diurutkan untuk memastikan CKR-BD sama dengan BD-CKR)
+                // FIX: Menambahkan tipe kereta ke kunci agar KRL dan Antarkota tidak saling offset
+                const segmentKey = [segment.dep_code, segment.arr_code].sort().join('-') + '|' + segment.type;
+
+                // Tentukan offset saat ini
+                const count = segmentDrawCount.get(segmentKey) || 0;
+                segmentDrawCount.set(segmentKey, count + 1);
+                
+                // Hitung koordinat offset
+                let offsetCoords = [];
+                if (count > 0) {
+                    // Hanya offset jika segmen sudah pernah digambar sebelumnya
+                    const offsetAmount = count * OFFSET_DISTANCE_KM; // 0.05km, 0.10km, 0.15km, etc.
+                    
+                    const [lat1, lon1] = [dep_stn.lat, dep_stn.lon];
+                    const [lat2, lon2] = [arr_stn.lat, arr_stn.lon];
+                    
+                    const initialBearing = calculateBearing(lat1, lon1, lat2, lon2);
+                    // Hitung bearing tegak lurus (+90 derajat)
+                    const perpendicularBearing = (initialBearing + 90) % 360; 
+                    
+                    const newStart = offsetLatLng(lat1, lon1, perpendicularBearing, offsetAmount);
+                    const newEnd = offsetLatLng(lat2, lon2, perpendicularBearing, offsetAmount);
+                    
+                    offsetCoords = [newStart, newEnd];
+
+                } else {
+                    // Rute pertama, tidak ada offset
+                    offsetCoords = [
+                        [dep_stn.lat, dep_stn.lon],
+                        [arr_stn.lat, arr_stn.lon]
+                    ];
+                }
+
+                allCoords.push(...offsetCoords);
+
+                let color = segment.type === 'Komuter' ? COLOR_COMMUTER : COLOR_KAI;
+                const weight = segment.type === 'Antarkota' ? 5 : 3;
+                const dashArray = segment.layover_minutes > 10 ? '5, 5' : null;
+
+                // 1. Gambar Rel/Rute menggunakan offsetCoords
+                const arrivalDate = dateFormatter.format(segment.arrival_datetime);
+                const departureDate = dateFormatter.format(segment.departure_datetime);
+
+                L.polyline(offsetCoords, {
+                    color: color,
+                    weight: weight,
+                    opacity: 1,
+                    dashArray: dashArray,
+                    lineCap: 'round'
+                }).addTo(routeLayer)
+                  .bindPopup(`
+                    <b>${segment.train_name}</b> (${segment.type})<br> 
+                    ${segment.departure_station} (${segment.departure_time} ${departureDate}) &rarr; 
+                    ${segment.arrival_station} (${segment.arrival_time} ${arrivalDate})<br>
+                    Durasi: ${durationMinutesToText(segment.duration_minutes)} | Biaya: Rp ${segment.price.toLocaleString('id-ID')}
+                  `);
+                
+                // Gunakan koordinat asli untuk marker stasiun (atau offset juga jika ingin marker ikut bergeser)
+                const markerCoords = offsetCoords[0]; // Ambil koordinat awal segmen yang sudah di-offset
+                
+                // 2. Gambar Waktu Tunggu (Transit)
+                if (i > 0 && segment.layover_minutes > 0) {
+                    L.circleMarker(markerCoords, {
+                        radius: 7, fillColor: getCssVar('--alert-error'), color: COLOR_PRIMARY_TEXT, weight: 2, fillOpacity: 1
+                    }).addTo(routeLayer).bindPopup(`<b>TRANSIT: ${dep_stn.nama}</b><br>Waktu Tunggu: ${durationMinutesToText(segment.layover_minutes)}`);
+                }
+
+                // 3. Mark the end station for this segment (intermediate stops)
+                if (i < segments.length - 1) {
+                     L.circleMarker(offsetCoords[1], { // Marker akhir segmen juga di-offset
+                        radius: 5, fillColor: COLOR_PRIMARY_TEXT, color: color, weight: 1, fillOpacity: 1
+                    }).addTo(routeLayer).bindPopup(`<b>${arr_stn.nama}</b> (Transit)`);
+                }
+            });
+            
+            // Marker Awal dan Akhir (dibuat di koordinat asli atau offset terakhir)
+            const startLoc = segments[0].dep_code;
+            const endLoc = segments[segments.length - 1].arr_code;
+            
+            const firstSegmentCoords = [STATIONS[startLoc].lat, STATIONS[startLoc].lon];
+            const lastSegmentCoords = [STATIONS[endLoc].lat, STATIONS[endLoc].lon];
+
+
+            const finalArrivalDate = dateFormatter.format(segments[segments.length - 1].arrival_datetime);
+            
+            // Marker Awal (Hijau) - Gunakan koordinat stasiun asli untuk marker utama
+            L.circleMarker(firstSegmentCoords, {
+                 radius: 8, fillColor: '#3CB371', color: COLOR_PRIMARY_TEXT, weight: 3, fillOpacity: 1
+            }).addTo(routeLayer).bindPopup(`<b>AWAL: ${STATIONS[startLoc].nama}</b> (Berangkat: ${segments[0].departure_time} ${dateFormatter.format(segments[0].departure_datetime)})`, { permanent: true, offset: [0, -10] });
+            
+            // Marker Tujuan (Merah) - Gunakan koordinat stasiun asli untuk marker utama
+            L.circleMarker(lastSegmentCoords, {
+                 radius: 8, fillColor: getCssVar('--alert-error'), color: COLOR_PRIMARY_TEXT, weight: 3, fillOpacity: 1
+            }).addTo(routeLayer).bindPopup(`<b>TUJUAN: ${STATIONS[endLoc].nama}</b> (Tiba: ${segments[segments.length - 1].arrival_time} ${finalArrivalDate})`, { permanent: true, offset: [0, -10] });
+
+
+            // Set Bounds
+            if (allCoords.length > 0) {
+                map.fitBounds(L.latLngBounds(allCoords), { padding: [50, 350], maxZoom: 12 });
+            }
+            
+            // Update Stat Bar dengan rute terpilih
+            updateStatBar(routeData);
+            
+            // 4. Saran AI Feature Integration (Panggil setelah update Stat Bar)
+            const longestLayover = segments.reduce((max, s) => Math.max(max, s.layover_minutes), 0);
+            const longestLayoverSegment = segments.find(s => s.layover_minutes === longestLayover);
+            const saranAiContainer = document.getElementById('saran-ai-suggestion-container');
+            const resultBox = document.getElementById('saran-ai-result-box');
+            
+            // Bersihkan hasil sebelumnya dan sembunyikan container
+            // FIX START: Tambahkan pemeriksaan null
+            if (resultBox) { 
+                 resultBox.innerHTML = '';
+            }
+            if (saranAiContainer) {
+                 saranAiContainer.innerHTML = ''; 
+            }
+            // FIX END
+
+            if (longestLayover >= 30 && longestLayoverSegment && STATIONS[longestLayoverSegment.dep_code].is_hub) {
+                const hubName = STATIONS[longestLayoverSegment.dep_code].nama;
+                
+                const button = document.createElement('button');
+                button.id = 'saran-ai-btn';
+                button.className = 'saran-ai-btn'; 
+                button.innerHTML = `✨ Saran Aktivitas Transit di ${hubName} (${durationMinutesToText(longestLayover)})`;
+                button.onclick = () => generateAITransitSuggestions(longestLayoverSegment.dep_code, longestLayover);
+                
+                if (saranAiContainer) {
+                    saranAiContainer.appendChild(button);
+                    saranAiContainer.appendChild(resultBox); // Tambahkan resultBox kembali
+                    saranAiContainer.style.display = 'block';
+                }
+            } else {
+                if (saranAiContainer) {
+                    saranAiContainer.style.display = 'none';
+                }
+            }
+        }
+
+        
+        function toggleKRLInfo() {
+            const container = document.getElementById('krl-info-container');
+            const icon = document.getElementById('krl-toggle-icon');
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                icon.textContent = '▲';
+            } else {
+                container.style.display = 'none';
+                icon.textContent = '▼';
+            }
+        }
+
+        // Fungsi baru untuk mengaktifkan/menonaktifkan sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('toggle-icon');
+            const isMinimized = sidebar.classList.toggle('minimized');
+            
+            if (window.innerWidth <= 768) {
+                // Mobile: Ganti ikon panah atas/bawah
+                icon.innerHTML = isMinimized ? '▲' : '▼';
+            } else {
+                // Desktop: Ganti ikon panah kiri/kanan
+                icon.innerHTML = isMinimized ? '&lt;' : '&gt;';
+            }
+
+            // Perlu menyesuaikan map view jika sidebar di desktop berubah ukuran
+            if (window.innerWidth > 768 && map) {
+                // Beri waktu untuk transisi CSS selesai
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 350); 
+            }
+        }
+
+        /**
+         * Mengganti tema (Dark/Light)
+         */
+        function toggleTheme(manual = true) {
+            const body = document.body;
+            const isLight = body.classList.toggle('light-mode');
+            
+            // Set Dark Mode jika isLight false, jika tidak, set Light Mode
+            const themeName = isLight ? 'light-mode' : 'dark-mode';
+            
+            if (manual) {
+                localStorage.setItem('theme', themeName);
+            }
+            
+            // Update konstanta JS dan map tiles
+            updateColorConstants();
+            
+            // Ganti map tile layer
+            if (map) {
+                map.eachLayer(function (layer) {
+                    // Cek apakah layer adalah TileLayer
+                    if (layer._url && layer._url.includes('cartocdn')) {
+                         const newUrl = isLight 
+                             ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+                             : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+                         layer.setUrl(newUrl);
+                    }
+                });
+            }
+            
+            // Render ulang stasiun dengan warna baru
+            renderStations();
+        }
+
+
+        // --- INISIALISASI ---
+        async function initializeApp() {
+            // 1. Terapkan tema yang tersimpan (atau default ke dark)
+            const savedTheme = localStorage.getItem('theme');
+            const toggleCheckbox = document.getElementById('theme-toggle');
+
+            if (savedTheme === 'light-mode') {
+                document.body.classList.add('light-mode');
+                toggleCheckbox.checked = true;
+            } else {
+                 document.body.classList.add('dark-mode');
+                 toggleCheckbox.checked = false;
+            }
+            
+            // Dengarkan perubahan tema
+            toggleCheckbox.addEventListener('change', () => toggleTheme(true));
+            
+            // 2. Update konstanta warna JS setelah class diterapkan
+            updateColorConstants();
+            
+            // 3. Inisialisasi Peta Leaflet
+            initMap(); 
+
+            // 4. Load data
+            const dataLoaded = await fetchSheetData();
+            if (dataLoaded) {
+                 renderStations();
+                 // Pindahkan tampilan peta ke area relevan (Jabodetabek) setelah stasiun dimuat
+                 map.setView(initialCoords, initialZoom); 
+            }
+            
+            // Set tanggal hari ini secara default
+            const dateInput = document.getElementById('date-select');
+            dateInput.valueAsDate = new Date();
+            // Pastikan tidak ada tanggal di masa lalu yang bisa dipilih
+            dateInput.min = new Date().toISOString().split('T')[0];
+
+            // Setup Autocomplete untuk kedua input
+            setupAutocomplete('start-location', 'start-suggestions');
+            setupAutocomplete('end-location', 'end-suggestions');
+            
+            // Muat konten KRL Info
+            document.getElementById('krl-info-container').innerHTML = KRL_INFO_CONTENT;
+            
+            // Atur status awal sidebar (mobile check)
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('toggle-icon');
+            if (window.innerWidth <= 768) {
+                // Di mobile, set minimized default dan gunakan ikon atas/bawah
+                sidebar.classList.add('minimized');
+                icon.innerHTML = '▲';
+            } else {
+                // Di desktop, set default terbuka dan gunakan ikon kiri/kanan
+                sidebar.classList.remove('minimized');
+                icon.innerHTML = '&gt;';
+            }
+            
+            // FIX: Tambahkan event listener di sini
+            document.getElementById('search-route-btn').addEventListener('click', drawRoute);
+        }
+
+        // Panggil inisialisasi aplikasi setelah semua sumber daya dimuat
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>

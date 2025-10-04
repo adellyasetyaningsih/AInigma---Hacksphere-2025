@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title data-i18n="doc_title">KAI X AInigma</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+   
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enables dark mode based on the 'dark' class on the HTML tag
+            theme: {
+                extend: {
+                    colors: {
+                        // Custom Palette based on user request
+                        'primary-pink': '#E03486',
+                        'primary-purple': '#8C4DBF',
+                        'primary-blue': '#3A89E5',
+                        'bg-neutral-light': '#F0F0F0', // Light Gray
+                        'text-dark': '#333333', // Dark Gray
+                        'bg-dark-primary': '#1F2937', // Custom Dark Gray
+                        'bg-card-dark': '#2B3440', // Slightly lighter dark for cards
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        /* Define the gradient for primary elements */
+        .gradient-bg {
+            background: linear-gradient(to right, #E03486, #8C4DBF, #3A89E5);
+        }
+        .gradient-text {
+            /* This is a fallback and complex in pure CSS, but we use primary-color below */
+            color: #E03486; 
+        }
+
+        /* Base styles (Light Mode) */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F0F0F0; /* Light Gray (bg-neutral-light) */
+            color: #333333; /* Dark Gray (text-dark) */
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Set defaults for major containers */
+        .bg-white {
+            background-color: #FFFFFF !important;
+            color: #333333 !important;
+        }
+        .text-slate-800, .text-slate-700, .text-slate-600 {
+            color: #333333 !important;
+        }
+        .text-slate-500 {
+            color: #6B7280 !important; /* Slightly lighter gray */
+        }
+        .btn-primary {
+            /* Use the gradient for the main button */
+            background: linear-gradient(to right, #E03486, #8C4DBF, #3A89E5);
+            color: #FFFFFF;
+            transition: opacity 0.3s ease;
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+            background: linear-gradient(to right, #E03486, #8C4DBF, #3A89E5);
+        }
+
+        /* Dark Mode styles */
+        .dark body {
+            background-color: #1F2937; /* bg-dark-primary */
+            color: #FFFFFF; /* White */
+        }
+        .dark .bg-white, .dark .card {
+            background-color: #2B3440 !important; /* bg-card-dark */
+            color: #FFFFFF !important;
+        }
+        .dark .text-slate-800, .dark .text-slate-700, .dark .text-slate-600 {
+            color: #F3F4F6 !important; /* Light text for dark mode */
+        }
+        .dark .text-slate-500 {
+            color: #D1D5DB !important;
+        }
+        .dark .border-slate-200, .dark .border-slate-300 {
+            border-color: #4B5563 !important;
+        }
+        .dark .bg-slate-50, .dark .bg-slate-100 {
+            background-color: #4B5563 !important;
+        }
+        .dark #chat-messages {
+            background-color: #2B3440 !important;
+        }
+        .dark .bot-bubble {
+            background-color: #4B5563 !important;
+            color: #F3F4F6;
+        }
+        .dark #bottom-nav {
+             background-color: #2B3440 !important;
+             border-top: 1px solid #4B5563;
+        }
+        
+        /* FIX BUG 1 (Price Card): Ensuring contrast in Dark Mode */
+        .dark .red-50 {
+            background-color: #4B5563 !important;
+            border-color: #993030 !important; /* Darker red border */
+        }
+        .dark .red-50 .text-red-700, .dark .red-50 .text-red-600 {
+            color: #F87171 !important; 
+        }
+        .dark .bg-green-50 {
+             background-color: #4B5563 !important;
+             border-color: #16A34A !important; /* Darker green border */
+        }
+        .dark .bg-green-50 .text-green-700, .dark .bg-green-50 .text-green-600 {
+             color: #6EE7B7 !important; /* Lighter green text */
+        }
+
+        /* FIX BUG 2 (Input/Textarea): Ensuring contrast in Dark Mode */
+        .dark input[type="text"], 
+        .dark input[type="date"], 
+        .dark textarea,
+        .dark select {
+            background-color: #4B5563 !important;
+            color: #F3F4F6 !important;
+            border-color: #6B7280 !important;
+        }
+        
+        /* Highlight Primary Text with Blue Gradient Start/End Color */
+        .text-primary-accent {
+            color: #3A89E5; /* Blue */
+        }
+        .dark .text-primary-accent {
+            color: #3B82F6; /* Lighter blue for dark mode readability */
+        }
+        /* End Dark Mode adjustments */
+        
+        /* Other utility styles */
+        .nav-link {
+            transition: color 0.3s ease;
+        }
+        .nav-link:hover {
+            color: #8C4DBF; /* Purple hover */
+        }
+        .card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px -2px rgb(0 0 0 / 0.1);
+        }
+       
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 250px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        
+        /* Chatbot Specific Styles */
+        #chatbot-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            display: none; /* Hidden by default */
+            width: 90%;
+            max-width: 380px;
+            height: 500px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #chat-messages {
+            flex-grow: 1;
+            padding: 15px;
+            background-color: #F8FAFC; /* Slate 50 */
+        }
+        .chat-bubble {
+            padding: 8px 12px;
+            border-radius: 18px;
+            max-width: 80%;
+            margin-bottom: 10px;
+            font-size: 0.875rem;
+        }
+        .user-bubble {
+            background-color: #8C4DBF; /* Primary Purple */
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .bot-bubble {
+            background-color: #E2E8F0; 
+            color: #1E293B;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        .dark .user-bubble {
+            background-color: #9333ea; /* Darker purple for contrast */
+        }
+        .dark .bot-bubble {
+            background-color: #4B5563 !important;
+            color: #F3F4F6;
+        }
+        .input-area {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #E2E8F0;
+        }
+        #chatbot-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 110;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(to top right, #E03486, #8C4DBF);
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        #chatbot-toggle:hover {
+            transform: scale(1.05);
+        }
+        /* Custom styles for ticket search results */
+        .ticket-card {
+            border-left: 4px solid #8C4DBF; /* Purple Accent */
+            transition: background-color 0.2s;
+        }
+        .ticket-card:hover {
+            background-color: #F3E8FF; /* Light Purple 50 */
+        }
+        .dark .ticket-card:hover {
+             background-color: #374151 !important;
+        }
+        
+        /* Mobile Bottom Navigation Styles */
+        #bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 90; /* Below chatbot toggle */
+            background-color: white;
+            border-top: 1px solid #E2E8F0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 0;
+            text-align: center;
+            font-size: 0.75rem; /* text-xs */
+            color: #64748B; /* Slate 500 */
+            transition: color 0.2s;
+        }
+        .nav-item:hover {
+            color: #8C4DBF; /* Purple Accent */
+        }
+        .nav-icon {
+            font-size: 1.5rem;
+            margin-bottom: 2px;
+        }
+        
+        /* Styling adjustment for native date input */
+        input[type="date"] {
+            /* This ensures the input fits cleanly without the calendar emoji span */
+            padding: 0; 
+            margin: 0;
+            border: none;
+            background-color: transparent;
+            /* Override to ensure the native picker icon is visible */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+
+        /* Appearance Dropdown Styling */
+        #appearance-dropdown {
+            position: absolute;
+            right: 0;
+            top: 40px;
+            width: 200px;
+            z-index: 60;
+        }
+        .appearance-option {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .appearance-option:hover {
+            background-color: #E2E8F0;
+        }
+        .dark .appearance-option:hover {
+            background-color: #4B5563;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- HEADER ATAS KLASIK & RAPIH (Logo Kiri, Nav Kanan) -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center relative">
+            <!-- Logo/Title - Rata Kiri -->
+            <h1 class="text-xl font-bold text-primary-accent" data-i18n="header_title">
+  <img src="logo.png" alt="KAI X AInigma" class="h-8 w-auto" />
+</h1>
+
+            
+            <!-- Desktop Navigation Links (Visible only on MD and larger screens) -->
+            <div class="hidden md:flex items-center space-x-6 text-sm">
+                
+                <!-- Appearance Icon and Dropdown -->
+                <div class="relative">
+                    <button id="appearance-toggle" onclick="toggleAppearanceDropdown()" class="text-xl p-2 rounded-full hover:bg-slate-100 dark:hover:bg-gray-600 transition">
+                         <span id="appearance-icon" class="text-primary-accent">🌓</span> 
+                    </button>
+                    
+                    <div id="appearance-dropdown" class="bg-white dark:bg-gray-700 rounded-lg shadow-xl border border-slate-200 dark:border-gray-600 hidden">
+                        <div class="p-3 text-sm font-semibold text-slate-500 dark:text-gray-400 border-b border-slate-200 dark:border-gray-600" data-i18n="appearance_title">Appearance</div>
+                        
+                        <div class="appearance-option flex items-center" data-theme="system" onclick="setTheme('system')">
+                            <span id="system-check" class="w-4 mr-2">✓</span> <span data-i18n="theme_system">Use device default</span>
+                        </div>
+                        <div class="appearance-option flex items-center" data-theme="dark" onclick="setTheme('dark')">
+                            <span id="dark-check" class="w-4 mr-2"></span> <span data-i18n="theme_dark">Dark theme</span>
+                        </div>
+                        <div class="appearance-option flex items-center" data-theme="light" onclick="setTheme('light')">
+                            <span id="light-check" class="w-4 mr-2"></span> <span data-i18n="theme_light">Light theme</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LANGUAGE SELECTOR (Fixed back to Flag + Text for stability) -->
+                <select id="language-selector" onchange="setLanguage(this.value)" class="p-2 border border-slate-300 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white cursor-pointer">
+                    <option value="id">Bahasa Indonesia</option>
+                    <option value="en">English</option>
+                </select>
+
+                <a href="#booking-flow" class="nav-link font-medium text-slate-700 hover:text-primary-accent dark:text-gray-300" data-i18n="nav_booking">Booking Flow</a>
+                <a href="#inspiration" class="nav-link font-medium text-slate-700 hover:text-primary-accent dark:text-gray-300" data-i18n="nav_ai_plan">AI Trip Plan</a>
+                <a href="#innovation" class="nav-link font-medium text-slate-700 hover:text-primary-accent dark:text-gray-300" data-i18n="nav_crowds">Rush Hour</a>
+                <a href="#translator" class="nav-link font-medium text-slate-700 hover:text-primary-accent dark:text-gray-300" data-i18n="nav_translator">Translator</a>
+                <a href="http://localhost:8080/" class="nav-link font-medium text-slate-700 hover:text-primary-accent dark:text-gray-300" data-i18n="nav_kaicari">KAICari</a>
+            </div>
+            
+            <!-- Mobile Menu Placeholder (Hidden on desktop) -->
+            <div class="md:hidden text-xl text-slate-600">
+                <!-- Icon ini hanya placeholder karena nav mobile ada di bawah -->
+                <span onclick="document.getElementById('bottom-nav').scrollIntoView({ behavior: 'smooth' })" data-i18n="menu_icon">☰</span>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+        <section class="mb-12">
+            <div style="width:100%; height:800px; border-radius:12px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.2);">
+            <iframe src="maps.html" 
+              style="width:100%; height:100%; border:none; border-radius:12px;">
+             </iframe>
+            </div>
+        </section>
+        <section class="text-center mb-20">
+            <h2 class="text-4xl font-bold text-primary-accent mb-4" data-i18n="app_tagline_h2">KAI Booking</h2>
+            <p class="text-lg text-slate-600 max-w-3xl mx-auto" data-i18n="app_tagline_p">Discover Indonesia's most beautiful destinations by rail</p>
+        </section>
+
+        <!-- SECTION 1: BOOKING FLOW (FUNCTIONAL) -->
+        <section id="booking-flow" class="mb-24 scroll-mt-20">
+            <div class="text-center mb-12">
+              <h3 class="text-3xl font-bold mt-2" data-i18n="s1_h3">Pemesanan Tiket</h3>
+               </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 max-w-4xl mx-auto border border-slate-200">
+                
+                <!-- Trip Type Toggle (Sekali Jalan / Pulang Pergi) -->
+                <div class="mb-6">
+                    <div class="flex bg-slate-100 rounded-lg p-1 max-w-sm mx-auto">
+                        <button id="one-way-btn" onclick="toggleTripType('one-way')" class="flex-1 py-2 rounded-lg text-sm font-semibold transition bg-white shadow-sm text-primary-accent" data-i18n="btn_oneway">Sekali Jalan</button>
+                        <button id="round-trip-btn" onclick="toggleTripType('round-trip')" class="flex-1 py-2 rounded-lg text-sm font-semibold transition text-slate-700 hover:bg-slate-200" data-i18n="btn_roundtrip">Pulang Pergi</button>
+                    </div>
+                </div>
+
+                <!-- Station Inputs -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <!-- Origin -->
+                    <div>
+                        <label for="origin" class="block text-sm font-medium text-slate-700" data-i18n="label_origin">Asal</label>
+                        <div class="mt-1 flex items-center bg-slate-50 p-2 rounded-md border border-slate-300">
+                            <span class="text-slate-400 mr-2">🚆</span>
+                            <input type="text" id="origin" value="Gambir (GMR)" class="w-full bg-transparent focus:outline-none" data-i18n-placeholder="ph_origin">
+                        </div>
+                    </div>
+                    <!-- Destination -->
+                    <div>
+                        <label for="destination" class="block text-sm font-medium text-slate-700" data-i18n="label_destination">Tujuan</label>
+                        <div class="mt-1 flex items-center bg-slate-50 p-2 rounded-md border border-slate-300">
+                            <span class="text-slate-400 mr-2">🚆</span>
+                            <input type="text" id="destination" value="Bandung (BD)" class="w-full bg-transparent focus:outline-none" data-i18n-placeholder="ph_destination">
+                            <!-- NEW FEATURE: Cheapest price based on destination -->
+                            <span id="cheapest-price-display" class="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full hidden"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Date and Passenger Inputs (Dynamic) -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <!-- Departure Date -->
+                    <div id="departure-date-group" class="col-span-1">
+                        <label for="departure" class="block text-sm font-medium text-slate-700" data-i18n="label_dep_date">Tanggal Berangkat</label>
+                        <div class="mt-1 flex items-center bg-slate-50 p-2 rounded-md border border-slate-300">
+                            <!-- Added onchange handler -->
+                            <input type="date" id="departure" value="2025-10-25" class="w-full bg-transparent focus:outline-none" onchange="updateReturnDateMin()">
+                        </div>
+                    </div>
+                    
+                    <!-- Return Date (Initially Hidden) -->
+                    <div id="return-date-group" class="col-span-1 hidden">
+                        <label for="return-date" class="block text-sm font-medium text-slate-700" data-i18n="label_ret_date">Tanggal Pulang</label>
+                        <div class="mt-1 flex items-center bg-slate-50 p-2 rounded-md border border-slate-300">
+                            <!-- Added min attribute logic in JS -->
+                            <input type="date" id="return-date" value="2025-10-28" class="w-full bg-transparent focus:outline-none">
+                        </div>
+                    </div>
+                    
+                    <!-- Passenger Count -->
+                    <div id="passenger-group" class="col-span-1">
+                        <label for="passengers" class="block text-sm font-medium text-slate-700" data-i18n="label_passengers">Penumpang</label>
+                        <div class="mt-1 flex items-center justify-between bg-slate-50 p-2 rounded-md border border-slate-300">
+                            <div class="flex items-center">
+                                <span class="text-slate-400 mr-2">👥</span>
+                                <span id="passenger-count-display" class="font-medium text-slate-800 dark:text-slate-200">1</span>
+                                <span id="passenger-label-text" class="ml-1 text-slate-800 dark:text-slate-200">Dewasa</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <button onclick="updatePassengerCount(1)" class="p-1 h-4 w-5 flex items-center justify-center rounded-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                </button>
+                                <button onclick="updatePassengerCount(-1)" class="p-1 h-4 w-5 flex items-center justify-center rounded-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Search Button -->
+                    <div id="search-button-group" class="col-span-1">
+                         <button onclick="searchTickets()" id="search-button" class="w-full btn-primary font-bold py-3 px-4 rounded-lg shadow-md text-lg" data-i18n="btn_search">Cari Tiket</button>
+                    </div>
+                </div>
+                
+                <!-- Quick Route Picks -->
+                 <div class="mt-6 border-t pt-6">
+                    <h4 class="font-semibold text-center text-slate-600 mb-4" data-i18n="s1_popular_routes">Atau pilih rute populer:</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <button class="w-full bg-slate-100 text-slate-700 p-3 rounded-lg hover:bg-slate-200 transition" onclick="selectRoute('Gambir (GMR)', 'Bandung (BD)')">Jakarta → Bandung</button>
+                        <button class="w-full bg-slate-100 text-slate-700 p-3 rounded-lg hover:bg-slate-200 transition" onclick="selectRoute('Surabaya Gubeng (SGU)', 'Yogyakarta (YK)')">Surabaya → Yogyakarta</button>
+                        <button class="w-full bg-slate-100 text-slate-700 p-3 rounded-lg hover:bg-slate-200 transition" onclick="selectRoute('Pasar Senen (PSE)', 'Surabaya Pasar Turi (SBI)')">Jakarta → Surabaya</button>
+                        <button class="w-full bg-slate-100 text-slate-700 p-3 rounded-lg hover:bg-slate-200 transition" onclick="selectRoute('Malang (ML)', 'Gambir (GMR)')">Malang → Jakarta</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ticket Search Results Area -->
+            <div id="search-results-area" class="mt-12 max-w-4xl mx-auto" style="display:none;">
+                <h3 class="text-2xl font-bold mb-4 text-center text-slate-800" id="s1_results_title">Hasil Pencarian: Gambir → Bandung</h3>
+                <div id="ticket-list" class="space-y-4">
+                    <!-- Ticket Cards will be injected here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: JOURNEY INSPIRATION (LLM FEATURE) -->
+        <section id="inspiration" class="mb-24 scroll-mt-20">
+            <div class="text-center mb-12">
+               <h3 id="inspiration-title" class="3xl font-bold mt-2 text-primary-accent">✨ Inspirasi Perjalanan untuk Bandung ✨</h3>
+                <p class="mt-4 text-slate-600 max-w-2xl mx-auto" data-i18n="s2_p">Fitur AI ini menghadirkan saran perjalanan yang disesuaikan dan relevan untuk kota tujuan Anda.</p>
+            </div>
+
+            <div class="card bg-white rounded-xl shadow-lg p-6 md:p-8 max-w-4xl mx-auto border border-slate-200">
+                <h4 class="font-bold text-lg mb-4 text-slate-800" id="inspiration-subtitle">Apa yang Dapat Dilakukan Dekat Stasiun Bandung?</h4>
+                <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                     <button id="generate-inspiration-btn" class="w-full sm:w-auto btn-primary font-semibold py-2 px-4 rounded-lg flex items-center justify-center" data-i18n="btn_generate_itin">
+                        <span class="mr-2">💡</span>Hasilkan 4-Jam Rencana Perjalanan
+                    </button>
+                </div>
+                
+                <div id="inspiration-output" class="p-4 bg-slate-50 rounded-lg text-slate-700 min-h-[150px] max-h-[400px] overflow-y-auto" data-i18n="s2_placeholder">
+                    Klik tombol di atas untuk menghasilkan ide perjalanan!
+                </div>
+                <div id="inspiration-loading" class="hidden text-center text-sm text-primary-accent mt-2">
+                    <span class="animate-spin inline-block mr-2">⚙️</span> <span data-i18n="loading_itin">Sedang menghasilkan rencana perjalanan...</span>
+                </div>
+                <div id="inspiration-sources" class="hidden text-xs text-slate-500 mt-4 pt-2 border-t border-slate-200">
+                    <p class="font-semibold mb-1" data-i18n="s2_sources_label">Sumber (Grounding):</p>
+                    <ul id="source-list" class="list-disc list-inside space-y-1"></ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: INNOVATION (CROWDING) -->
+        <section id="innovation" class="mb-24 scroll-mt-20">
+             <div class="text-center mb-12">
+                <span class="text-sm font-semibold uppercase text-primary-accent" data-i18n="s3_label">Station Rush Hour</span>
+                <h3 class="3xl font-bold mt-2" data-i18n="s3_h3">Data Kepadatan Penumpang Per Jam</h3>
+                </div>
+
+            <div class="card bg-white rounded-xl shadow-lg p-6 md:p-8 border border-slate-200">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <div class="flex justify-between items-baseline mb-4">
+                            <div>
+                                <h4 class="font-bold text-lg" data-i18n="s3_chart_h4">Aliran Penumpang Per Jam</h4>
+                                <p class="text-sm text-slate-500" data-i18n="s3_chart_p">Data Keberangkatan Stasiun Gambir</p>
+                            </div>
+                
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="bookingChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="text-center bg-slate-50 rounded-lg p-8">
+                        <h4 class="font-semibold text-slate-700 mb-2" data-i18n="s3_train_name">Argo Bromo Anggrek (KA 10)</h4>
+                        <p class="text-sm text-slate-500 mb-6" data-i18n="s3_crowding_desc">Prediksi kepadatan untuk keberangkatan jam 17:00:</p>
+                        
+                        <!-- CROWDING METER TEXT -->
+                        <div id="crowding-meter-text-large" class="text-4xl mb-4 font-extrabold text-red-600">Tinggi</div>
+                        
+                        <div id="crowding-meter-text" class="2xl font-bold text-red-600">Tinggi</div>
+                        <p class="text-xs text-slate-500 mt-4" data-i18n="s3_meter_impact">Ini membantu penumpang membuat keputusan yang informatif untuk perjalanan yang lebih nyaman.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: STATION TRANSLATOR (NEW LLM FEATURE) -->
+        <section id="translator" class="mb-24 scroll-mt-20">
+            <div class="text-center mb-12">
+                <span class="text-sm font-semibold uppercase text-primary-accent" data-i18n="s4_label">AI Based Tranlator</span>
+                <h3 class="3xl font-bold mt-2" data-i18n="s4_h3">Penerjemah Interaksi Stasiun</h3>
+                <p class="mt-4 text-slate-600 max-w-2xl mx-auto" data-i18n="s4_p">Fitur ini membantu wisatawan asing atau domestik berkomunikasi dengan petugas. Terjemahan diformalkan untuk interaksi yang sopan.</p>
+            </div>
+
+            <div class="card bg-white rounded-xl shadow-lg p-6 md:p-8 max-w-3xl mx-auto border border-slate-200">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <!-- Language Selection -->
+                    <div>
+                        <label for="source-lang" class="block text-sm font-medium text-slate-700" data-i18n="s4_label_from">Terjemahkan DARI Bahasa</label>
+                        <select id="source-lang" class="w-full p-3 border border-slate-300 rounded-lg bg-white focus:ring-primary-blue focus:border-primary-blue">
+                            <option value="English">English</option>
+                            <option value="Mandarin">Mandarin</option>
+                            <option value="Japanese">Japanese</option>
+                            <option value="Indonesian" selected>Indonesian</option>
+                        </select>
+                    </div>
+                    <!-- Target Selection -->
+                    <div>
+                        <label for="target-lang" class="block text-sm font-medium text-slate-700" data-i18n="s4_label_to">Terjemahkan KE Bahasa</label>
+                        <select id="target-lang" class="w-full p-3 border border-slate-300 rounded-lg bg-white focus:ring-primary-blue focus:border-primary-blue">
+                            <option value="Indonesian" selected>Indonesian</option>
+                            <option value="English">English</option>
+                            <option value="Mandarin">Mandarin</option>
+                            <option value="Japanese">Japanese</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label for="raw-translation" class="block text-sm font-medium text-slate-700 mb-1" data-i18n="s4_label_input">Teks Masukan (Tulis atau Tempel)</label>
+                <!-- Dihapus data-i18n-placeholder agar input bersih -->
+                <textarea id="raw-translation" rows="3" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue"></textarea>
+
+                <div class="flex justify-between items-center mt-4">
+                    <button onclick="translateStationText()" id="translate-btn" class="btn-primary font-semibold py-2 px-4 rounded-lg flex items-center" data-i18n="btn_translate">
+                        <span class="mr-2">🌐</span>Terjemahkan Teks
+                    </button>
+                    <div id="translate-loading" class="text-sm text-primary-accent hidden">
+                        <span class="animate-spin inline-block mr-2">⚙️</span> <span data-i18n="loading_translate">Menerjemahkan...</span>
+                    </div>
+                </div>
+                
+                <label for="translated-output" class="block text-sm font-medium text-slate-700 mt-6 mb-1" data-i18n="s4_label_output">Hasil Terjemahan</label>
+                <textarea id="translated-output" rows="3" readonly class="w-full p-3 border border-slate-200 bg-slate-50 rounded-lg text-slate-700"></textarea>
+            </div>
+        </section>
+    </main>
+    
+    <!-- NEW: CHATBOT WIDGET -->
+    <div id="chatbot-toggle" onclick="openChatbot()">💬</div>
+
+    <div id="chatbot-container" style="display: none;">
+        <div class="flex justify-between items-center p-3 gradient-bg text-white">
+            <h5 class="font-bold" data-i18n="chatbot_title">KAI Chatbot Bantuan</h5>
+            <button onclick="closeChatbot()" class="text-xl font-bold">&times;</button>
+        </div>
+        <div id="chat-messages">
+            <div class="chat-bubble bot-bubble" data-i18n="chatbot_greeting">Halo! Saya Asisten KAI Anda. Tanyakan apa saja tentang tiket, jadwal, atau fasilitas kereta.</div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="chat-input" data-i18n-placeholder="ph_chatbot_input" placeholder="Ketik pesan Anda..." class="w-full p-2 border border-slate-300 rounded-l-lg focus:outline-none">
+            <button onclick="sendMessage()" id="send-button" class="btn-primary py-2 px-4 rounded-r-lg font-semibold" data-i18n="btn_send">Kirim</button>
+        </div>
+        <div id="chat-loading" class="text-xs text-center text-primary-accent p-1 hidden">
+            <span class="animate-pulse">Bot sedang mengetik...</span><span data-i18n="loading_typing"></span>
+        </div>
+    </div>
+
+
+    <footer class="bg-white mt-24 border-t">
+        <div class="container mx-auto px-6 py-6 text-center text-sm text-slate-500">
+            <p data-i18n="footer_text">This is AInigma group project for Hacksphere 2025 powered by PT. KAI.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Dark Mode Logic (Place at the very start of the script) ---
+        function checkTheme() {
+            const currentTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (currentTheme === 'dark' || (!currentTheme && prefersDark)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            updateAppearanceChecks(currentTheme || 'system');
+        }
+
+        function setTheme(mode) {
+            const html = document.documentElement;
+            localStorage.setItem('theme', mode);
+            
+            if (mode === 'system') {
+                localStorage.removeItem('theme'); // Remove stored preference to rely on OS
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (prefersDark) {
+                    html.classList.add('dark');
+                } else {
+                    html.classList.remove('dark');
+                }
+            } else if (mode === 'dark') {
+                html.classList.add('dark');
+            } else { // light
+                html.classList.remove('dark');
+            }
+            updateAppearanceChecks(mode);
+            toggleAppearanceDropdown(false); // Close dropdown after selection
+        }
+
+        function updateAppearanceChecks(activeTheme) {
+            ['system', 'dark', 'light'].forEach(theme => {
+                document.getElementById(`${theme}-check`).textContent = (theme === activeTheme) ? '✓' : '';
+            });
+
+            // Update icon based on actual mode
+            const isDark = document.documentElement.classList.contains('dark');
+            document.getElementById('appearance-icon').textContent = isDark ? '🌙' : '☀️';
+        }
+
+        function toggleAppearanceDropdown(showToggle = true) {
+            const dropdown = document.getElementById('appearance-dropdown');
+            if (showToggle) {
+                dropdown.classList.toggle('hidden');
+            } else {
+                dropdown.classList.add('hidden');
+            }
+            // Update check marks when opening
+            if (!dropdown.classList.contains('hidden')) {
+                const currentTheme = localStorage.getItem('theme') || 'system';
+                updateAppearanceChecks(currentTheme);
+            }
+        }
+        
+        // Initial theme check on script load
+        checkTheme();
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', checkTheme);
+
+
+        // --- API & Utility Constants ---
+        const apiKey = "AIzaSyBFsoX1U2y7jFasUZFnSpYPkcPdL-hadQg"; 
+
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        const maxRetries = 3;
+        const initialDelay = 1000;
+
+        // --- Localization Data (All text for the page) ---
+        const translations = {
+            'id': {
+                'header_title': 'KAI X AInigma',
+                'nav_booking': 'Ticket Booking',
+                'nav_ai_plan': 'AI Trip Plan',
+                'nav_crowds': 'Rush Hour',
+                'nav_translator': 'Translator',
+                'nav_kaicari': 'KAICari',
+                'app_tagline_h2': 'KAI Booking',
+                'app_tagline_p': 'Discover Indonesia most beautiful destinations by rail',
+                's1_h3': 'Pemesanan Tiket',
+                'btn_oneway': 'Sekali Jalan',
+                'btn_roundtrip': 'Pulang Pergi',
+                'label_origin': 'Asal',
+                'label_destination': 'Tujuan',
+                'label_dep_date': 'Tanggal Berangkat',
+                'label_ret_date': 'Tanggal Pulang',
+                'label_passengers': 'Penumpang',
+                'btn_search': 'Cari Tiket',
+                's1_popular_routes': 'Atau pilih rute populer:',
+               's2_h3': '✨ Inspirasi Perjalanan untuk',
+                's2_p': 'Fitur AI ini menghadirkan saran perjalanan yang disesuaikan dan relevan untuk kota tujuan Anda.',
+                'btn_generate_itin': '💡 Hasilkan 4-Jam Rencana Perjalanan',
+                's2_placeholder': 'Klik tombol di atas untuk menghasilkan ide perjalanan!',
+                'loading_itin': 'Sedang menghasilkan rencana perjalanan...',
+                's2_sources_label': 'Sumber (Grounding):',
+                's3_label': 'Rush Hour',
+                's3_h3': 'Data Kepadatan Penumpang Per Jam',
+                's3_chart_h4': 'Aliran Penumpang Per Jam',
+                's3_chart_p': 'Data Keberangkatan Stasiun Gambir',
+                's3_train_name': 'Argo Bromo Anggrek (KA 10)',
+                's3_crowding_desc': 'Prediksi kepadatan untuk keberangkatan jam 17:00:',
+                's3_meter_impact': 'Ini membantu penumpang membuat keputusan yang informatif untuk perjalanan yang lebih nyaman.',
+                's4_label': 'AI based Translator',
+                's4_h3': 'Penerjemah Interaksi Stasiun',
+                's4_p': 'Fitur ini membantu wisatawan asing atau domestik berkomunikasi dengan petugas. Terjemahan diformalkan untuk interaksi yang sopan.',
+                's4_label_from': 'Terjemahkan DARI Bahasa',
+                's4_label_to': 'Terjemahkan KE Bahasa',
+                's4_label_input': 'Teks Masukan (Tulis atau Tempel)',
+                's4_ph_input': '', // Placeholder dihilangkan
+                'btn_translate': 'Terjemahkan Teks',
+                'loading_translate': 'Menerjemahkan...',
+                's4_label_output': 'Hasil Terjemahan',
+                'chatbot_title': 'KAI Chatbot Bantuan',
+                'chatbot_greeting': 'Halo! Saya Asisten KAI Anda. Tanyakan apa saja tentang tiket, jadwal, atau fasilitas kereta.',
+                'ph_chatbot_input': 'Ketik pesan Anda...',
+                'btn_send': 'Kirim',
+                'loading_typing': 'Bot sedang mengetik...',
+                'footer_text': 'This is AInigma group project for Hacksphere 2025 powered by PT. KAI.',
+                'doc_title': 'Interactive Report: KAI Website UI/UX Enhancement',
+                'appearance_title': 'Tampilan',
+                'theme_system': 'Gunakan default perangkat',
+                'theme_dark': 'Mode Gelap',
+                'theme_light': 'Mode Terang',
+                // Dynamic strings for JS
+                'cheapest_price_prefix': 'Termurah:',
+                'crowding_low': 'Rendah',
+                'crowding_medium': 'Sedang',
+                'crowding_high': 'Tinggi',
+                'crowding_na': 'Tidak Tersedia',
+                'search_results_prefix': 'Hasil Pencarian (',
+                'search_results_oneway': 'Sekali Jalan',
+                'search_results_roundtrip': 'Pulang Pergi',
+                'ticket_crowding_prefix': 'Kepadatan: ',
+                'ticket_select_btn': 'Pilih',
+                'itin_loading_error': 'Terjadi kesalahan saat menghubungi layanan AI. Silakan coba lagi. (Cek Konsol Browser)',
+                'itin_api_key_error': 'ERROR: Kunci API Gemini belum diatur. Silakan periksa kode Anda.',
+                'translator_loading_error': 'Gagal menghubungi AI. Cek Konsol Browser untuk detail error API.',
+                'translator_api_key_error': 'ERROR: Kunci API Gemini belum diatur di kode.',
+                'ph_origin': 'Contoh: Gambir (GMR)',
+                'ph_destination': 'Contoh: Bandung (BD)',
+                'passenger_label_adult': ' Dewasa',
+                'itin_user_query': 'Sarankan Rencana Perjalanan 4 jam di dekat {destination} dengan fokus pada budaya dan makanan, yang cocok untuk pelancong kereta api yang tiba di stasiun utama.',
+            },
+            'en': {
+                'header_title': 'KAI X AInigma',
+                'nav_booking': 'Ticket Booking',
+                'nav_ai_plan': 'AI Trip Plan',
+                'nav_crowds': 'Rush Hour',
+                'nav_translator': 'Translator',
+                'nav_kaicari': 'KAICari',
+                'app_tagline_h2': 'KAI Booking',
+                'app_tagline_p': 'Discover Indonesia most beautiful destinations by rail',
+                's1_h3': 'Ticket Booking',
+                'btn_oneway': 'One Way',
+                'btn_roundtrip': 'Round Trip',
+                'label_origin': 'Origin',
+                'label_destination': 'Destination',
+                'label_dep_date': 'Departure Date',
+                'label_ret_date': 'Return Date',
+                'label_passengers': 'Passengers',
+                'btn_search': 'Search Tickets',
+                's1_popular_routes': 'Or select a popular route:',
+                's2_h3': '✨ Trip Inspiration for',
+                's2_p': 'This AI feature transforms ticket booking into the first step of trip planning, providing curated and relevant travel suggestions for your destination city.',
+                'btn_generate_itin': '💡 Generate 4-Hour Itinerary',
+                's2_placeholder': 'Click the button above to generate trip ideas!',
+                'loading_itin': 'Generating itinerary...',
+                's2_sources_label': 'Sources (Grounding):',
+                's3_label': 'Rush Hour',
+                's3_h3': 'Hourly Passenger Data',
+                's3_p': 'This feature helps passengers choose less crowded trains. Hover over the bar chart to see the predicted passenger count for that departure time.',
+                's3_chart_h4': 'Hourly Passenger Flow',
+                's3_chart_p': 'Gambir Station Departure Simulation',
+                's3_train_name': 'Argo Bromo Anggrek (KA 10)',
+                's3_crowding_desc': 'Crowding prediction for the 17:00 departure:',
+                's3_meter_impact': 'This helps passengers make informed decisions for a more comfortable journey.',
+                's4_label': 'AI based translator',
+                's4_h3': 'Station Interaction Translator',
+                's4_p': 'This feature helps foreign or domestic travelers communicate with staff. Translations are formalized for polite interactions.',
+                's4_label_from': 'Translate FROM Language',
+                's4_label_to': 'Translate TO Language',
+                's4_label_input': 'Input Text (Write or Paste)',
+                's4_ph_input': '', // Placeholder dihilangkan
+                'btn_translate': 'Translate Text',
+                'loading_translate': 'Translating...',
+                's4_label_output': 'Translated Result',
+                'chatbot_title': 'KAI Help Chatbot',
+                'chatbot_greeting': 'Hello! I am your KAI Assistant. Ask me anything about tickets, schedules, or train facilities.',
+                'ph_chatbot_input': 'Type your message...',
+                'btn_send': 'Send',
+                'loading_typing': 'Bot is typing...',
+                'footer_text': 'This is AInigma group project for Hacksphere 2025 powered by PT. KAI.',
+                'doc_title': 'Interactive Report: KAI Website UI/UX Enhancement',
+                'appearance_title': 'Appearance',
+                'theme_system': 'Use device default',
+                'theme_dark': 'Dark theme',
+                'theme_light': 'Light theme',
+                // Dynamic strings for JS
+                'cheapest_price_prefix': 'Cheapest:',
+                'crowding_low': 'Low',
+                'crowding_medium': 'Medium',
+                'crowding_high': 'High',
+                'crowding_na': 'N/A',
+                'search_results_prefix': 'Search Results (',
+                'search_results_oneway': 'One Way',
+                'search_results_roundtrip': 'Round Trip',
+                'ticket_crowding_prefix': 'Crowding: ',
+                'ticket_select_btn': 'Select',
+                'itin_loading_error': 'An error occurred while contacting the AI service. Please try again. (Check Browser Console)',
+                'itin_api_key_error': 'ERROR: Gemini API Key not set. Please check your code.',
+                'translator_loading_error': 'Failed to contact AI. Check Browser Console for API error details.',
+                'translator_api_key_error': 'ERROR: Gemini API Key not set in code.',
+                'ph_origin': 'E.g., Gambir (GMR)',
+                'ph_destination': 'E.g., Bandung (BD)',
+                'passenger_label_adult_single': ' Adult',
+                'passenger_label_adult_plural': ' Adults',
+                'itin_user_query': 'Suggest a 4-hour travel plan near {destination} focusing on culture and food, suitable for a train traveler arriving at the main station.',
+            }
+        };
+
+        let currentLang = 'id';
+
+        // --- Core Translation Function ---
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang; // Set HTML language attribute
+            
+            // 1. Translate static elements
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    element.textContent = translations[lang][key];
+                }
+            });
+
+            // 2. Translate placeholders
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                const key = element.getAttribute('data-i18n-placeholder');
+                if (translations[lang][key]) {
+                    element.placeholder = translations[lang][key];
+                }
+            });
+
+            // 3. Update dynamic elements that were initialized in Indonesian
+            updateDynamicText();
+        }
+
+        function translateElement(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        // Function to update dynamic text blocks (used after language change)
+        function updateDynamicText() {
+            // Update S1 Placeholder (Cheapest Price)
+            const destinationValue = document.getElementById('destination').value;
+            if (destinationValue) {
+                updateCheapestPrice(destinationValue);
+            }
+
+            // Update S2 Titles
+            const destinationName = document.getElementById('destination').value.split('(')[0].trim() || translateElement('destination_default');
+            updateInspirationTitles(destinationName);
+
+            // Update Crowding Meter (Using Tinggi/Rendah/Sedang)
+            const crowdingKey = document.getElementById('crowding-meter-text-large').textContent.toLowerCase();
+            if (crowdingKey.includes('tinggi') || crowdingKey.includes('high')) {
+                updateCrowdingMeterDisplay('high');
+            } else if (crowdingKey.includes('sedang') || crowdingKey.includes('medium')) {
+                 updateCrowdingMeterDisplay('medium');
+            } else {
+                 updateCrowdingMeterDisplay('low');
+            }
+            
+            // Re-render ticket list to update crowding labels
+            const ticketList = document.getElementById('ticket-list');
+            if (ticketList.innerHTML) { // Only re-render if results are visible
+                ticketList.innerHTML = ticketData.map(renderTicketCard).join('');
+            }
+            
+            // Re-label translator language options (This section is fine as flags + full name text)
+            document.getElementById('source-lang').querySelector('option[value="Indonesian"]').textContent = 'Indonesian';
+            document.getElementById('source-lang').querySelector('option[value="English"]').textContent = 'English';
+            document.getElementById('source-lang').querySelector('option[value="Mandarin"]').textContent = 'Mandarin';
+            document.getElementById('source-lang').querySelector('option[value="Japanese"]').textContent = 'Japanese';
+
+            document.getElementById('target-lang').querySelector('option[value="Indonesian"]').textContent = 'Indonesian';
+            document.getElementById('target-lang').querySelector('option[value="English"]').textContent = 'English';
+            document.getElementById('target-lang').querySelector('option[value="Mandarin"]').textContent = 'Mandarin';
+            document.getElementById('target-lang').querySelector('option[value="Japanese"]').textContent = 'Japanese';
+            
+            // Update appearance texts
+            document.getElementById('appearance-dropdown').querySelectorAll('.appearance-option').forEach(option => {
+                const themeKey = 'theme_' + option.getAttribute('data-theme');
+                const textSpan = option.querySelector('span:nth-child(2)');
+                if (textSpan) {
+                    textSpan.textContent = translateElement(themeKey);
+                }
+            });
+            document.getElementById('appearance-dropdown').querySelector('.font-semibold').textContent = translateElement('appearance_title');
+            
+            // Update passenger label
+            updatePassengerLabel();
+        }
+        
+        // Chatbot state
+        let chatHistory = [];
+        
+        // Dynamic System Prompts based on language state
+        function getChatSystemPrompt() {
+            if (currentLang === 'en') {
+                return "You are a friendly and efficient KAI Customer Service Assistant. Answer user questions briefly and clearly in English. Focus on information related to KAI train services, tickets, schedules, and stations. You must also be able to explain the new features in this application: 1. Crowding Meter: Predicts passenger density. 2. Cheapest Price: Displays the lowest/highest monthly ticket price. 3. Trip Inspiration: Provides travel recommendations for the destination city. DO NOT use Google Search.";
+            } else {
+                return "Anda adalah Asisten Layanan Pelanggan KAI yang ramah dan efisien. Jawab pertanyaan pengguna dengan singkat dan jelas dalam Bahasa Indonesia. Fokus pada informasi terkait layanan kereta, tiket, jadwal, dan stasiun KAI. Anda juga harus mampu menjelaskan fitur-fitur baru di aplikasi ini: 1. Crowding Meter: Memprediksi kepadatan penumpang. 2. Harga Termurah: Menampilkan harga tiket bulanan terendah/tertinggi. 3. Inspirasi Perjalanan: Memberikan rekomendasi wisata di kota tujuan. JANGAN gunakan Google Search.";
+            }
+        }
+        
+        function getInspirationSystemPrompt() {
+            if (currentLang === 'en') {
+                return "Act as a friendly English travel guide. Generate a concise, inspiring travel plan for 3 unique points of interest (landmarks, food spots, or activities) near the arrival station, mentioning their approximate distance/travel time from the main train station. Format the response using markdown and bold for the name and location. Ensure the output is clean and easy to read.";
+            } else {
+                return "Act as a friendly Indonesian travel guide. Generate a concise, inspiring Rencana Perjalanan for 3 unique points of interest (landmarks, food spots, or activities) near the arrival station, mentioning their approximate distance/travel time from the main train station. Format the response using markdown and bold for the name and location. Ensure the output is clean and easy to read.";
+            }
+        }
+        
+        function getTranslatorSystemPrompt(sourceLang, targetLang) {
+            return `Anda adalah penerjemah stasiun kereta yang ketat. Tugas Anda HANYA untuk menerjemahkan teks dari ${sourceLang} ke ${targetLang}. JANGAN tambahkan kalimat pembuka, penutup, atau penjelasan apa pun. Output harus berupa kalimat terjemahan saja, menggunakan nada bahasa yang sopan dan formal.`;
+        }
+        // --- END Localization Logic ---
+
+
+        // --- Core Gemini API Call Function with Backoff ---
+        async function callGeminiApi(payload, retries = 0) {
+            if (apiKey === "PASTE_YOUR_GEMINI_API_KEY_HERE" || apiKey === "") {
+                // This is the explicit error check that triggers the console error.
+                throw new Error("API_KEY_MISSING");
+            }
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    if (response.status === 429 && retries < maxRetries) {
+                        const delay = initialDelay * Math.pow(2, retries);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        return callGeminiApi(payload, retries + 1);
+                    }
+                    // Throw a specific error for other failures
+                    const errorBody = await response.text();
+                    console.error("API Request Failed:", response.status, errorBody);
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                if (error.message === "API_KEY_MISSING") {
+                    throw error; // Propagate immediately if API key is missing
+                }
+                if (retries < maxRetries) {
+                    const delay = initialDelay * Math.pow(2, retries);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return callGeminiApi(payload, retries + 1);
+                }
+                console.error("Gemini API call failed after multiple retries:", error);
+                throw error; 
+            }
+        }
+
+        // --- Chatbot Functions ---
+        function openChatbot() {
+            document.getElementById('chatbot-container').style.display = 'flex';
+            document.getElementById('chatbot-toggle').style.display = 'none';
+            // Translate chatbot greetings on open
+            const initialGreeting = document.querySelector('#chat-messages .bot-bubble');
+            if(initialGreeting) {
+                initialGreeting.textContent = translateElement('chatbot_greeting');
+            }
+        }
+
+        function closeChatbot() {
+            document.getElementById('chatbot-container').style.display = 'none';
+            document.getElementById('chatbot-toggle').style.display = 'flex';
+        }
+
+        function appendMessage(sender, text) {
+            const messagesDiv = document.getElementById('chat-messages');
+            const bubble = document.createElement('div');
+            bubble.classList.add('chat-bubble');
+            
+            // Basic formatting for bot responses
+            let formattedText = text;
+            if (sender === 'bot') {
+                formattedText = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>'); // Bold markdown
+                bubble.classList.add('bot-bubble');
+            } else {
+                bubble.classList.add('user-bubble');
+            }
+            
+            bubble.innerHTML = formattedText;
+            messagesDiv.appendChild(bubble);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const inputElement = document.getElementById('chat-input');
+            const message = inputElement.value.trim();
+            const loadingDiv = document.getElementById('chat-loading');
+            
+            if (!message) return;
+
+            // 1. Display user message and clear input
+            appendMessage('user', message);
+            inputElement.value = '';
+            
+            // 2. Add to chat history
+            chatHistory.push({ role: "user", parts: [{ text: message }] });
+
+            // 3. Show loading indicator and disable input/button
+            loadingDiv.classList.remove('hidden');
+            inputElement.disabled = true;
+            document.getElementById('send-button').disabled = true;
+
+            const payload = {
+                contents: chatHistory,
+                systemInstruction: { parts: [{ text: getChatSystemPrompt() }] },
+            };
+            
+            try {
+                const result = await callGeminiApi(payload);
+                const botResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, saya sedang kesulitan terhubung. Bisakah Anda coba lagi?";
+
+                // 4. Display bot response
+                appendMessage('bot', botResponse);
+                
+                // 5. Update history with bot response
+                chatHistory.push({ role: "model", parts: [{ text: botResponse }] });
+
+            } catch (error) {
+                console.error("Chatbot API error:", error);
+                let errorMessage = translateElement('itin_loading_error');
+                if (error.message === "API_KEY_MISSING") {
+                     errorMessage = `<strong class='text-red-600'>${translateElement('itin_api_key_error')}</strong>`;
+                }
+                appendMessage('bot', errorMessage);
+            } finally {
+                // 6. Hide loading, re-enable input/button
+                loadingDiv.classList.add('hidden');
+                inputElement.disabled = false;
+                document.getElementById('send-button').disabled = false;
+                inputElement.focus();
+            }
+        }
+
+        // Allow sending message with Enter key
+        document.getElementById('chat-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+
+        // --- Journey Inspiration Logic ---
+        async function generateInspiration() {
+            const outputDiv = document.getElementById('inspiration-output');
+            const loadingDiv = document.getElementById('inspiration-loading');
+            const sourcesDiv = document.getElementById('inspiration-sources');
+            const sourcesList = document.getElementById('source-list');
+            const destination = document.getElementById('destination').value.split('(')[0].trim() || "Bandung";
+
+            outputDiv.innerHTML = `<p class="text-center text-slate-500">...${translateElement('loading_itin')}...</p>`;
+            sourcesList.innerHTML = '';
+            loadingDiv.classList.remove('hidden');
+            sourcesDiv.classList.add('hidden');
+            
+            // Update Title/Subtitle just before generation
+            updateInspirationTitles(destination);
+
+
+            const systemPrompt = getInspirationSystemPrompt();
+            const userQueryTemplate = translateElement('itin_user_query');
+            const userQuery = userQueryTemplate.replace('{destination}', destination);
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const result = await callGeminiApi(payload);
+                const candidate = result.candidates?.[0];
+
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    let text = candidate.content.parts[0].text;
+                    
+                    // LANGKAH PEMBERSIHAN: Hapus markdown list/heading symbols & fix itinerary phrasing
+                    text = text.replace(/###\s*/g, ''); 
+                    text = text.replace(/\*\s*/g, '');
+                    text = text.replace(/Itinerary/gi, translateElement('itin_ai_phrase')); // Replace 'Itinerary' with translated phrase
+                    text = text.replace(/Rencana Perjalanan\s\d+\sJam/g, translateElement('itin_4hour_phrase'));
+                    
+                    // Basic Markdown to HTML conversion for strong tags and line breaks
+                    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    text = text.replace(/\n/g, '<br>');
+                    
+                    outputDiv.innerHTML = text;
+
+                    let sources = [];
+                    const groundingMetadata = candidate.groundingMetadata;
+                    if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                        sources = groundingMetadata.groundingAttributions
+                            .map(attribution => ({
+                                uri: attribution.web?.uri,
+                                title: attribution.web?.title,
+                            }))
+                            .filter(source => source.uri && source.title);
+
+                        if (sources.length > 0) {
+                            sources.forEach(source => {
+                                const li = document.createElement('li');
+                                const a = document.createElement('a');
+                                a.href = source.uri;
+                                a.target = '_blank';
+                                a.rel = 'noopener noreferrer';
+                                a.textContent = source.title;
+                                a.className = 'text-blue-500 hover:text-blue-700 underline';
+                                li.appendChild(a);
+                                sourcesList.appendChild(li);
+                            });
+                            sourcesDiv.classList.remove('hidden');
+                        }
+                    }
+                } else {
+                    outputDiv.textContent = "Maaf, tidak dapat menghasilkan inspirasi perjalanan saat ini. (No Content)";
+                }
+            } catch (error) {
+                let errorMessage = translateElement('itin_loading_error');
+                if (error.message === "API_KEY_MISSING") {
+                     errorMessage = `<strong class='text-red-600'>${translateElement('itin_api_key_error')}</strong>`;
+                }
+                outputDiv.innerHTML = `<p class='text-red-500'>${errorMessage}</p>`;
+            } finally {
+                loadingDiv.classList.add('hidden');
+            }
+        }
+        document.getElementById('generate-inspiration-btn').addEventListener('click', generateInspiration);
+
+        // --- Station Translator Logic (NEW) ---
+        async function translateStationText() {
+            const sourceLang = document.getElementById('source-lang').value;
+            const targetLang = document.getElementById('target-lang').value;
+            const rawText = document.getElementById('raw-translation').value.trim();
+            const translatedOutput = document.getElementById('translated-output');
+            const translateBtn = document.getElementById('translate-btn');
+            const loadingDiv = document.getElementById('translate-loading');
+
+            if (!rawText) {
+                translatedOutput.value = "Silakan masukkan teks untuk diterjemahkan.";
+                return;
+            }
+
+            translatedOutput.value = translateElement('loading_translate') + '...';
+            translateBtn.disabled = true;
+            loadingDiv.classList.remove('hidden');
+
+            const systemPrompt = getTranslatorSystemPrompt(sourceLang, targetLang);
+            const userQuery = `Terjemahkan teks berikut:\n\n"${rawText}"`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const result = await callGeminiApi(payload);
+                let text = result.candidates?.[0]?.content?.parts?.[0]?.text || translateElement('translator_loading_error');
+                
+                // LANGKAH PEMBERSIHAN (CLEANUP)
+                text = text.replace(/\*\*/g, '').trim(); 
+                
+                translatedOutput.value = text;
+            } catch (error) {
+                 let errorMessage = translateElement('translator_loading_error');
+                if (error.message === "API_KEY_MISSING") {
+                     errorMessage = translateElement('translator_api_key_error');
+                }
+                translatedOutput.value = errorMessage;
+                console.error("Translator API error:", error);
+            } finally {
+                translateBtn.disabled = false;
+                loadingDiv.classList.add('hidden');
+            }
+        }
+
+
+        // --- Dynamic Title Update Logic ---
+        function updateInspirationTitles(destinationName) {
+            const destinationClean = destinationName.split('(')[0].trim();
+            document.getElementById('inspiration-title').textContent = `✨ ${translateElement('s2_h3')} ${destinationClean} ✨`;
+            document.getElementById('inspiration-subtitle').textContent = translateElement('inspiration_subtitle_prefix') + destinationClean + translateElement('inspiration_subtitle_suffix');
+        }
+        
+        // Add dynamic strings to translation data for subtitles
+        translations.id.inspiration_subtitle_prefix = 'Apa yang Dapat Dilakukan Dekat Stasiun ';
+        translations.id.inspiration_subtitle_suffix = '?';
+        translations.id.itin_ai_phrase = 'Rencana Perjalanan';
+        translations.id.itin_4hour_phrase = 'Rencana Perjalanan 4 Jam';
+        translations.en.inspiration_subtitle_prefix = 'What Can Be Done Near ';
+        translations.en.inspiration_subtitle_suffix = ' Station?';
+        translations.en.itin_ai_phrase = 'Travel Plan';
+        translations.en.itin_4hour_phrase = '4-Hour Travel Plan';
+        translations.en.destination_default = 'Bandung';
+
+        // --- Crowding Logic Helper ---
+        function getCrowdingLabel(crowdingCode) {
+            const lang = currentLang;
+            let key;
+            if (crowdingCode === "🟢") {
+                key = 'crowding_low';
+            } else if (crowdingCode === "🟡") {
+                key = 'crowding_medium';
+            } else if (crowdingCode === "🔴") {
+                key = 'crowding_high';
+            } else {
+                return translateElement('crowding_na');
+            }
+            
+            let color = key.includes('low') ? 'green-600' : (key.includes('medium') ? 'yellow-600' : 'red-600');
+            return `<span class="text-${color} font-semibold">${translateElement(key)}</span>`;
+        }
+        
+        // This function updates the text color/label in Section IV
+        function updateCrowdingMeterDisplay(crowdingKey) {
+            const meterTextLarge = document.getElementById('crowding-meter-text-large');
+            const meterText = document.getElementById('crowding-meter-text');
+
+            let key = `crowding_${crowdingKey}`;
+            let color = crowdingKey === 'low' ? 'green-600' : (crowdingKey === 'medium' ? 'yellow-600' : 'red-600');
+            
+            meterTextLarge.textContent = translateElement(key);
+            meterText.textContent = translateElement(key);
+            
+            // Update color classes
+            ['text-red-600', 'text-yellow-600', 'text-green-600'].forEach(c => {
+                meterTextLarge.classList.remove(c);
+                meterText.classList.remove(c);
+            });
+            meterTextLarge.classList.add(`text-${color}`);
+            meterText.classList.add(`text-${color}`);
+        }
+
+        // --- Booking Flow & Simulation Logic ---
+        const ticketData = [
+            // Updated crowding to use keys for consistency
+            { name: "Argo Parahyangan", departure: "06:00", arrival: "09:00", duration: "3j 0m", class: "Eksekutif", price: 200000, crowding: "🟢" },
+            { name: "Serayu Pagi", departure: "09:30", arrival: "13:30", duration: "4j 0m", class: "Ekonomi", price: 120000, crowding: "🟢" },
+            { name: "Argo Wilis", departure: "12:00", arrival: "15:00", duration: "3j 0m", class: "Eksekutif", price: 250000, crowding: "🟡" },
+            { name: "Lodaya Malam", departure: "17:00", arrival: "21:00", duration: "4j 0m", class: "Bisnis", price: 180000, crowding: "🔴" },
+        ];
+
+        // --- Passenger Count Logic ---
+        let passengerCount = 1;
+
+        function updatePassengerCount(change) {
+            const newCount = passengerCount + change;
+            if (newCount >= 1) { // Prevent going below 1 passenger
+                passengerCount = newCount;
+                document.getElementById('passenger-count-display').textContent = passengerCount;
+                updatePassengerLabel();
+            }
+        }
+
+        function updatePassengerLabel() {
+            const labelEl = document.getElementById('passenger-label-text');
+            if (currentLang === 'en') {
+                labelEl.textContent = passengerCount > 1 ? translateElement('passenger_label_adult_plural') : translateElement('passenger_label_adult_single');
+            } else {
+                labelEl.textContent = translateElement('passenger_label_adult');
+            }
+        }
+
+        function formatPrice(price) {
+            // Price formatting remains locale-specific for IDR
+            return `IDR ${price.toLocaleString('id-ID')}`;
+        }
+
+        function renderTicketCard(ticket) {
+            const crowdingLabel = getCrowdingLabel(ticket.crowding); 
+            const crowdingPrefix = translateElement('ticket_crowding_prefix');
+            const selectBtnText = translateElement('ticket_select_btn');
+
+            return `
+                <div class="ticket-card bg-white p-4 rounded-lg shadow flex justify-between items-center text-sm">
+                    <div class="flex-grow">
+                        <p class="font-bold text-base text-slate-800">${ticket.name}</p>
+                        <p class="text-xs text-slate-500">${ticket.class}</p>
+                    </div>
+                    <div class="text-center mx-4">
+                        <p class="font-semibold">${ticket.departure} - ${ticket.arrival}</p>
+                        <p class="text-xs text-slate-500">${ticket.duration}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-lg text-green-600">${formatPrice(ticket.price)}</p>
+                        <p class="text-xs text-slate-500">${crowdingPrefix}${crowdingLabel}</p>
+                    </div>
+                    <button class="ml-4 btn-primary py-2 px-3 rounded-md text-xs font-semibold">${selectBtnText}</button>
+                </div>
+            `;
+        }
+
+        function searchTickets() {
+            const origin = document.getElementById('origin').value;
+            const destination = document.getElementById('destination').value;
+            const departureDate = document.getElementById('departure').value;
+            const returnDate = document.getElementById('return-date').value;
+            const isRoundTrip = !document.getElementById('return-date-group').classList.contains('hidden');
+            
+            const resultsArea = document.getElementById('search-results-area');
+            const ticketList = document.getElementById('ticket-list');
+            
+            const tripTypeKey = isRoundTrip ? 'search_results_roundtrip' : 'search_results_oneway';
+            const tripTypeLabel = translateElement(tripTypeKey);
+            const prefix = translateElement('search_results_prefix');
+
+            let dateInfo = isRoundTrip ? `${departureDate} - ${returnDate}` : departureDate; 
+
+            // Update Header (using translated strings)
+            resultsArea.querySelector('h3').textContent = `${prefix}${tripTypeLabel}): ${origin.split('(')[0].trim()} → ${destination.split('(')[0].trim()} (${dateInfo})`;
+
+            // Render simulated tickets
+            ticketList.innerHTML = ticketData.map(renderTicketCard).join('');
+
+            // Show results
+            resultsArea.style.display = 'block';
+
+            // Optional: Scroll to results
+            resultsArea.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function selectRoute(origin, destination) {
+            document.getElementById('origin').value = origin;
+            document.getElementById('destination').value = destination;
+            updateCheapestPrice(destination); // Update cheapest price display
+            updateInspirationTitles(destination); // Update inspiration titles on route selection
+        }
+        
+        // Mock data for cheapest prices based on destination (Matches map data)
+        const cheapestPriceData = {
+            'bandung': 'IDR 120K+',
+            'jakarta': 'IDR 150K+',
+            'semarang': 'IDR 200K+',
+            'yogyakarta': 'IDR 250K+',
+            'surabaya': 'IDR 350K+',
+            'medan': 'IDR 180K+'
+        };
+
+        function updateCheapestPrice(destinationName) {
+            const displayElement = document.getElementById('cheapest-price-display');
+            // Clean up the input string to match data key
+            const destinationClean = destinationName.toLowerCase().replace(/ \(.+\)/, '').trim(); 
+            const prefix = translateElement('cheapest_price_prefix');
+
+            if (cheapestPriceData[destinationClean]) {
+                displayElement.textContent = `${prefix} ${cheapestPriceData[destinationClean]}`;
+                displayElement.classList.remove('hidden');
+            } else {
+                displayElement.classList.add('hidden');
+            }
+        }
+
+        // --- NEW: Trip Type Toggle Logic ---
+        function toggleTripType(type) {
+            const oneWayBtn = document.getElementById('one-way-btn');
+            const roundTripBtn = document.getElementById('round-trip-btn');
+            const returnDateGroup = document.getElementById('return-date-group');
+            const departureDateGroup = document.getElementById('departure-date-group');
+            
+            if (type === 'one-way') {
+                // UI Update
+                oneWayBtn.classList.add('bg-white', 'shadow-sm', 'text-primary-accent');
+                oneWayBtn.classList.remove('hover:bg-slate-200', 'text-slate-700');
+                
+                roundTripBtn.classList.remove('bg-white', 'shadow-sm', 'text-primary-accent');
+                roundTripBtn.classList.add('hover:bg-slate-200', 'text-slate-700');
+                
+                // Ensure text is correct after toggle
+                oneWayBtn.textContent = translateElement('btn_oneway');
+                roundTripBtn.textContent = translateElement('btn_roundtrip');
+
+                // Functionality
+                returnDateGroup.classList.add('hidden');
+                // Adjusting col span for responsive layout
+                departureDateGroup.classList.remove('lg:col-span-2'); 
+                departureDateGroup.classList.add('lg:col-span-1'); 
+
+            } else if (type === 'round-trip') {
+                 // UI Update
+                roundTripBtn.classList.add('bg-white', 'shadow-sm', 'text-primary-accent');
+                roundTripBtn.classList.remove('hover:bg-slate-200', 'text-slate-700');
+                
+                oneWayBtn.classList.remove('bg-white', 'shadow-sm', 'text-primary-accent');
+                oneWayBtn.classList.add('hover:bg-slate-200', 'text-slate-700');
+
+                // Ensure text is correct after toggle
+                oneWayBtn.textContent = translateElement('btn_oneway');
+                roundTripBtn.textContent = translateElement('btn_roundtrip');
+
+                // Functionality
+                returnDateGroup.classList.remove('hidden');
+                // Adjusting col span back
+                departureDateGroup.classList.remove('lg:col-span-1'); 
+                departureDateGroup.classList.add('lg:col-span-1'); 
+                
+                // CRITICAL FIX: Ensure return date minimum is set when switching to round trip
+                updateReturnDateMin();
+            }
+        }
+
+        // --- CRITICAL FIX FUNCTION: Enforce Return Date >= Departure Date ---
+        function updateReturnDateMin() {
+            const departureInput = document.getElementById('departure');
+            const returnInput = document.getElementById('return-date');
+            const departureDateValue = departureInput.value; // YYYY-MM-DD format
+            
+            if (departureDateValue) {
+                // 1. Set the min attribute for the return date input
+                returnInput.min = departureDateValue;
+
+                // 2. Check if the current return date is earlier than the new departure date
+                if (returnInput.value < departureDateValue) {
+                    // If it is earlier, automatically adjust the return date to match the departure date
+                    returnInput.value = departureDateValue;
+                }
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial language to Indonesian
+            setLanguage('id');
+
+            // --- Booking Flow Destination Input Listener ---
+            const destinationInput = document.getElementById('destination');
+            
+            // Initial call
+            updateCheapestPrice(destinationInput.value); 
+            updateInspirationTitles(destinationInput.value); 
+            
+            // Event listener for changes (simulating user typing/selecting)
+            destinationInput.addEventListener('input', (e) => {
+                updateCheapestPrice(e.target.value);
+                updateInspirationTitles(e.target.value); // Update titles dynamically as user types
+            });
+            
+            // Set initial trip type state (One Way)
+            toggleTripType('one-way');
+            // End Booking Flow Logic
+
+            // --- Chart.js Crowding Chart Logic ---
+            const ctxBooking = document.getElementById('bookingChart').getContext('2d');
+            const meterTextLarge = document.getElementById('crowding-meter-text-large');
+            const meterText = document.getElementById('crowding-meter-text'); 
+
+            // Update initial text state for Section IV
+            updateCrowdingMeterDisplay('high'); // Set initial state to 'Tinggi' / 'High'
+
+            const hourlyData = {
+                '6': 80, '7': 250, '8': 300, '9': 180, '10': 150, '11': 120, 
+                '12': 200, '13': 190, '14': 220, '15': 280, '16': 350, '17': 400, 
+                '18': 380, '19': 250, '20': 200, '21': 150, '22': 100
+            };
+
+            const labelsBooking = Object.keys(hourlyData).map(h => `${h.padStart(2, '0')}:00`);
+            const dataPointsBooking = Object.values(hourlyData);
+            
+            const bookingChart = new Chart(ctxBooking, {
+                type: 'bar',
+                data: {
+                    labels: labelsBooking,
+                    datasets: [{
+                        label: 'Passenger Count',
+                        data: dataPointsBooking,
+                        backgroundColor: (context) => {
+                             const value = context.raw;
+                            if (value < 150) return '#10B981'; // Green (Low)
+                            if (value < 300) return '#F59E0B'; // Amber (Medium)
+                            return '#EF4444'; // Red (High)
+                        },
+                        borderColor: '#FFFFFF',
+                        borderWidth: 0,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    const langKey = currentLang === 'en' ? 'Hour' : 'Jam';
+                                    return `${langKey}: ${tooltipItems[0].label}`;
+                                },
+                                label: function(tooltipItem) {
+                                    const langKey = currentLang === 'en' ? 'Passengers' : 'Penumpang';
+                                    return `${langKey}: ${tooltipItem.raw}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            display: false
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                autoSkip: true,
+                                maxTicksLimit: 8
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

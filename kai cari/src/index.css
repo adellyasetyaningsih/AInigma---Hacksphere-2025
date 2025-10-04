@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* KAI Indonesia Brand Colors */
+    --kai-pink: 338 79% 57%;        /* #E03486 */
+    --kai-purple: 270 47% 52%;      /* #8C4DBF */
+    --kai-blue: 210 73% 56%;        /* #3A89E5 */
+    
+    --background: 0 0% 94%;          /* #F0F0F0 */
+    --foreground: 0 0% 20%;          /* #333333 */
+
+    --card: 0 0% 100%;               /* #FFFFFF */
+    --card-foreground: 0 0% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 20%;
+
+    --primary: 338 79% 57%;          /* KAI Pink */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 270 47% 52%;        /* KAI Purple */
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 210 73% 56%;           /* KAI Blue */
+    --accent-foreground: 0 0% 100%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 89%;
+    --input: 0 0% 89%;
+    --ring: 338 79% 57%;
+
+    --radius: 0.75rem;
+
+    /* Gradient stops */
+    --gradient-start: 338 79% 57%;   /* Pink */
+    --gradient-mid: 270 47% 52%;     /* Purple */
+    --gradient-end: 210 73% 56%;     /* Blue */
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 14%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 14%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 338 79% 57%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 270 47% 52%;
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 210 73% 56%;
+    --accent-foreground: 0 0% 100%;
+
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 65%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 338 79% 57%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .gradient-kai {
+    background: linear-gradient(135deg, hsl(var(--gradient-start)), hsl(var(--gradient-mid)), hsl(var(--gradient-end)));
+  }
+  
+  .gradient-kai-text {
+    background: linear-gradient(135deg, hsl(var(--gradient-start)), hsl(var(--gradient-mid)), hsl(var(--gradient-end)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
+  }
+  
+  .card-interactive {
+    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5;
+  }
+}
